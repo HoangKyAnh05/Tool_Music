@@ -3279,6 +3279,12 @@ function setupVocalSeparator() {
         return;
       }
 
+      // Look for an existing Vocal track or Track 3 or empty track
+      let vocalTrack = state.timeline.tracks.find((t) => t.isVocal || t.name.toLowerCase().includes("vocal") || t.id === "track_3");
+      if (!vocalTrack) {
+        vocalTrack = state.timeline.tracks.find((t) => !t.filepath || t.filepath.trim() === "");
+      }
+
       // Send to Step 5 Timeline (Always align to 0.0s and volume 1.0 to avoid distortion)
       if (vocalTrack) {
         vocalTrack.filepath = vocalPath;
