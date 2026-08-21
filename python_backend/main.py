@@ -1,14 +1,16 @@
-"""
-AI Music & Vocal Studio - FastAPI Server
-Backend engine for Beat Analysis, AI Songwriting, Neural Vocal Generation, and Studio Mixing.
-"""
-
 import os
+import sys
 import json
 import time
 import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+# Ensure python_backend directory is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -211,19 +213,24 @@ async def generate_vocals_only(req: VocalOnlyRequest):
 async def mix_full_song(req: MixSongRequest):
     """
     1-Click Master Workflow:
-    1. Generates neural vocals with rhythm spacing.
+    1. Generates neural vocals with rhythm spacing in parallel.
     2. Applies studio DSP effects (EQ, Reverb, Compressor, Delay).
     3. Mixes vocals over beat and exports master MP3.
     """
     try:
-        if not os.path.exists(req.beat_path):
-            raise HTTPException(status_code=404, detail="File Beat không tồn tại trên server.")
+        beat_path_obj = Path(req.beat_path)
+        if not beat_path_obj.is_absolute():
+            beat_path_obj = BASE_DIR / req.beat_path
             
+        if not beat_path_obj.exists():
+            raise HTTPException(status_code=404, detail=f"File Beat không tồn tại trên server: {req.beat_path}")
+            
+        actual_beat_path = str(beat_path_obj)
         timestamp = int(time.time())
         safe_title = "".join(c for c in (req.song_title or "AI_Master_Song") if c.isalnum() or c in (' ', '_', '-')).rstrip()
         safe_title = safe_title.replace(" ", "_")
         
-        # 1. Generate vocal track
+        # 1. Generate vocal track in parallel
         vocal_filename = f"vocal_{timestamp}.wav"
         vocal_path = VOCALS_DIR / vocal_filename
         
@@ -241,7 +248,7 @@ async def mix_full_song(req: MixSongRequest):
         master_output_path = OUTPUTS_DIR / master_mp3_filename
         
         mix_beat_and_vocals(
-            beat_path=req.beat_path,
+            beat_path=actual_beat_path,
             vocal_path=str(vocal_path),
             output_path=str(master_output_path),
             mix_settings=req.mix_settings
