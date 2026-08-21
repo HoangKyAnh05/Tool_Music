@@ -1890,11 +1890,7 @@ function setupMultiTrackTimeline() {
           e.stopPropagation();
           const seekTime = parseFloat(el.getAttribute("data-seek-time"));
           if (!isNaN(seekTime)) {
-            state.timeline.playheadSec = seekTime;
-            timelineCurrentTime.innerText = formatSeconds(seekTime);
-            const percent = (seekTime / (state.timeline.totalDurationSec || 60.0)) * 100;
-            timelinePlayhead.style.left = `${Math.min(100, Math.max(0, percent))}%`;
-            syncAllTracks(seekTime, state.timeline.isPlaying);
+            seekToTime(seekTime);
             showToast(`📍 Vạch đỏ đã nhảy tới nhịp: ${formatSeconds(seekTime)}s`, "info");
           }
         });
@@ -1983,18 +1979,33 @@ function setupMultiTrackTimeline() {
     let isDragging = false;
     let startX = 0;
     let initialLeftPercent = 0;
+    let hasMoved = false;
 
     blockEl.addEventListener("mousedown", (e) => {
-      if (e.target.closest(".btn-remove-block") || e.target.closest(".btn-block-tune")) return;
+      if (e.target.closest(".btn-remove-block") || e.target.closest(".btn-block-tune") || e.target.closest(".beat-dot") || e.target.closest(".section-flag-tag")) return;
       isDragging = true;
+      hasMoved = false;
       startX = e.clientX;
       const styleLeft = blockEl.style.left || "0%";
       initialLeftPercent = parseFloat(styleLeft) || 0;
       e.preventDefault();
     });
 
+    // Jump Playhead to start of this sound block when clicking the drag handle
+    const handleEl = blockEl.querySelector(".sound-block-drag-handle");
+    if (handleEl) {
+      handleEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!hasMoved) {
+          seekToTime(track.start_time_sec || 0);
+          showToast(`📍 Vạch đỏ đã nhảy tới đầu khối: ${formatSeconds(track.start_time_sec || 0)}s`, "info");
+        }
+      });
+    }
+
     window.addEventListener("mousemove", (e) => {
       if (!isDragging) return;
+      hasMoved = true;
       const parentLane = blockEl.parentElement;
       if (!parentLane) return;
 
@@ -2002,19 +2013,35 @@ function setupMultiTrackTimeline() {
       const deltaX = e.clientX - startX;
       const deltaPercent = (deltaX / laneWidth) * 100;
 
-      let newLeft = Math.max(0, Math.min(88, initialLeftPercent + deltaPercent));
-      blockEl.style.left = `${newLeft.toFixed(1)}%`;
+      let newLeft = Math.max(0, Math.min(95, initialLeftPercent + deltaPercent));
+      blockEl.style.left = `${newLeft.toFixed(2)}%`;
 
-      const startSec = (newLeft / 100.0) * state.timeline.totalDurationSec;
-      track.start_time_sec = parseFloat(startSec.toFixed(2));
+      const total = state.timeline.totalDurationSec || 60.0;
+      const startSec = parseFloat(((newLeft / 100.0) * total).toFixed(2));
+      track.start_time_sec = startSec;
 
       const titleEl = blockEl.querySelector(".sound-block-title");
       if (titleEl) {
         titleEl.innerText = `${track.name} (${formatSeconds(startSec)}s)`;
       }
 
-      if (state.timeline.isPlaying) {
-        syncTrackAudio(track, state.timeline.playheadSec, true);
+      // Live update audio offset for this track
+      const audio = trackAudioPool[track.id];
+      if (audio) {
+        const curSec = state.timeline.playheadSec || 0;
+        const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : (track.duration_sec || 30.0);
+        const endSec = track.start_time_sec + dur;
+        if (curSec >= track.start_time_sec && curSec < endSec) {
+          const off = curSec - track.start_time_sec;
+          try { audio.currentTime = off; } catch (err) {}
+          if (state.timeline.isPlaying && audio.paused) {
+            audio.play().catch(() => {});
+          }
+        } else {
+          if (!audio.paused) {
+            audio.pause();
+          }
+        }
       }
     });
 
@@ -2022,6 +2049,30 @@ function setupMultiTrackTimeline() {
       if (isDragging) {
         isDragging = false;
         recalculateTotalDuration();
+
+        // Immediately sync track audio to current playhead position
+        const audio = trackAudioPool[track.id];
+        if (audio) {
+          const curSec = state.timeline.playheadSec || 0;
+          const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : (track.duration_sec || 30.0);
+          const endSec = track.start_time_sec + dur;
+          if (curSec >= track.start_time_sec && curSec < endSec) {
+            const off = curSec - track.start_time_sec;
+            try { audio.currentTime = off; } catch (err) {}
+            if (state.timeline.isPlaying) {
+              audio.play().catch(() => {});
+            }
+          } else {
+            audio.pause();
+            if (curSec < track.start_time_sec && audio.readyState >= 1) {
+              try { audio.currentTime = 0; } catch (err) {}
+            }
+          }
+        }
+
+        if (hasMoved) {
+          showToast(`📍 Đã dịch chuyển "${track.name}" tới mốc: ${formatSeconds(track.start_time_sec)}s`, "info");
+        }
       }
     });
   }
@@ -2552,16 +2603,14 @@ function setupMultiTrackTimeline() {
   // --- Seeking / Drag Scrubbing on Playhead Knob, Line & Ruler ---
   let isPlayheadDragging = false;
 
-  function seekToX(clientX) {
-    if (!timelineRuler) return;
-    const rect = timelineRuler.getBoundingClientRect();
-    const clickX = clientX - rect.left;
-    const percent = Math.max(0, Math.min(1, clickX / rect.width));
+  function seekToTime(targetSec) {
     recalculateTotalDuration();
-    const newSec = percent * (state.timeline.totalDurationSec || 60.0);
+    const totalDur = state.timeline.totalDurationSec || 60.0;
+    const newSec = Math.max(0, Math.min(totalDur, targetSec));
     state.timeline.playheadSec = newSec;
-    timelineCurrentTime.innerText = formatSeconds(newSec);
-    timelinePlayhead.style.left = `${(percent * 100).toFixed(2)}%`;
+    if (timelineCurrentTime) timelineCurrentTime.innerText = formatSeconds(newSec);
+    const percent = (newSec / totalDur) * 100;
+    if (timelinePlayhead) timelinePlayhead.style.left = `${Math.min(100, Math.max(0, percent))}%`;
 
     state.timeline.tracks.forEach((track) => {
       if (!track.filepath || track.filepath.trim() === "") return;
@@ -2585,6 +2634,16 @@ function setupMultiTrackTimeline() {
         }
       }
     });
+  }
+
+  function seekToX(clientX) {
+    if (!timelineRuler) return;
+    const rect = timelineRuler.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, clickX / rect.width));
+    recalculateTotalDuration();
+    const newSec = percent * (state.timeline.totalDurationSec || 60.0);
+    seekToTime(newSec);
   }
 
   // 1. Drag on Playhead line or top knob
