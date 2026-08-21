@@ -1,57 +1,49 @@
-# Script Đẩy Mã Nguồn Lên GitHub - AI Music Studio
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-Write-Host "=======================================================================" -ForegroundColor Cyan
-Write-Host "              🚀 ĐẨY MÃ NGUỒN LÊN GITHUB REPOSITORY 🚀" -ForegroundColor Green
-Write-Host "=======================================================================" -ForegroundColor Cyan
-Write-Host "Remote: https://github.com/HoangKyAnh05/Tool_Music.git`n" -ForegroundColor Yellow
-
+# Tu dong day code len GitHub 1-Click
 $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $rootDir
 
+Write-Host '=======================================================================' -ForegroundColor Cyan
+Write-Host '             DANG TU DONG DAY MA NGUON LEN GITHUB (1-CLICK)' -ForegroundColor Green
+Write-Host '=======================================================================' -ForegroundColor Cyan
+Write-Host 'Repo: https://github.com/HoangKyAnh05/Tool_Music.git' -ForegroundColor Yellow
+Write-Host ''
+
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Write-Host "[LỖI] Máy tính chưa cài đặt Git! Vui lòng cài Git từ https://git-scm.com/" -ForegroundColor Red
-    Read-Host "Nhấn Enter để thoát..."
+    Write-Host '[LOI] May tinh chua cai dat Git!' -ForegroundColor Red
+    Read-Host 'Nhan Enter de thoat...'
     exit 1
 }
 
-if (-not (Test-Path ".git")) {
-    Write-Host "[1/4] Khởi tạo Git Repository..." -ForegroundColor Gray
+if (-not (Test-Path '.git')) {
+    Write-Host '[1/4] Khoi tao Git Repository...' -ForegroundColor Gray
     git init
     git branch -M main
-} else {
-    Write-Host "[1/4] Git Repository đã sẵn sàng." -ForegroundColor Gray
 }
 
-Write-Host "[2/4] Cấu hình Remote URL GitHub..." -ForegroundColor Gray
+Write-Host '[2/4] Cap nhat Remote URL...' -ForegroundColor Gray
 git remote remove origin 2>$null
 git remote add origin https://github.com/HoangKyAnh05/Tool_Music.git
 
-Write-Host "[3/4] Gom các tập tin (git add .)..." -ForegroundColor Gray
-git add .
+Write-Host '[3/4] Gom toan bo file thay doi (git add -A)...' -ForegroundColor Gray
+git add -A
 
-$defaultMsg = "Update AI Music Studio"
-$inputMsg = Read-Host "Nhập nội dung commit (Nhấn Enter để dùng mặc định: '$defaultMsg')"
-if ([string]::IsNullOrWhiteSpace($inputMsg)) {
-    $commitMsg = $defaultMsg
-} else {
-    $commitMsg = $inputMsg
-}
+$timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+git commit -m "Auto update AI Music Studio: $timestamp"
 
-git commit -m "$commitMsg"
-
-Write-Host "`n[4/4] Đang đẩy code lên GitHub nhánh main..." -ForegroundColor Cyan
+Write-Host '[4/4] Dang day truc tiep len GitHub...' -ForegroundColor Cyan
 git branch -M main
 git push -u origin main
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n=======================================================================" -ForegroundColor Green
-    Write-Host "  ✅ ĐÃ ĐẨY MÃ NGUỒN LÊN GITHUB THÀNH CÔNG!" -ForegroundColor Green
-    Write-Host "  🔗 Link Repo: https://github.com/HoangKyAnh05/Tool_Music.git" -ForegroundColor Yellow
-    Write-Host "=======================================================================`n" -ForegroundColor Green
+    Write-Host ''
+    Write-Host '=======================================================================' -ForegroundColor Green
+    Write-Host '  DA DAY CODE LEN GITHUB THANH CONG (100% TU DONG)!' -ForegroundColor Green
+    Write-Host '  Link Repo: https://github.com/HoangKyAnh05/Tool_Music' -ForegroundColor Yellow
+    Write-Host '=======================================================================' -ForegroundColor Green
 } else {
-    Write-Host "`n⚠️ Có lỗi khi đẩy code lên GitHub." -ForegroundColor Red
-    Write-Host "Vui lòng kiểm tra quyền tài khoản GitHub hoặc kết nối mạng.`n" -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host 'Co loi khi day code len GitHub. Vui long kiem tra lai ket noi mang hoac tai khoan.' -ForegroundColor Red
 }
 
-Read-Host "Nhấn Enter để kết thúc..."
+Write-Host ''
+Read-Host 'Nhan Enter de dong cua so nay...'
