@@ -52,9 +52,9 @@ function startPythonBackend() {
   console.log(`Starting Python backend using: ${selectedPython}`);
   
   if (selectedPython === 'py') {
-    pythonProcess = spawn('py', ['-3.11', pythonScript], { cwd: rootDir, shell: true });
+    pythonProcess = spawn('py', ['-3.11', pythonScript], { cwd: rootDir, shell: true, windowsHide: true });
   } else {
-    pythonProcess = spawn(selectedPython, [pythonScript], { cwd: rootDir, shell: true });
+    pythonProcess = spawn(selectedPython, [pythonScript], { cwd: rootDir, shell: true, windowsHide: true });
   }
 
   pythonProcess.stdout?.on('data', (data) => {
