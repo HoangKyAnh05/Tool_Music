@@ -1669,6 +1669,45 @@ function setupMultiTrackTimeline() {
       timelineTotalTime.innerText = formatSeconds(total);
     }
     updateRulerMarkers(total);
+    updateAllBlockPositions();
+  }
+
+  function updateAllBlockPositions() {
+    const totalDur = state.timeline.totalDurationSec || 60.0;
+    state.timeline.tracks.forEach((track) => {
+      const row = document.querySelector(`.track-row[data-track-id="${track.id}"]`);
+      if (!row) return;
+      const block = row.querySelector(".sound-block");
+      if (!block) return;
+
+      const hasSound = Boolean(track.filepath && track.filepath.trim() !== "");
+      block.style.display = hasSound ? "flex" : "none";
+      if (!hasSound) return;
+
+      const audio = trackAudioPool[track.id];
+      let dur = track.duration_sec;
+      if (audio && audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+        dur = audio.duration;
+        track.duration_sec = dur;
+      }
+      if (!dur || isNaN(dur) || dur <= 0) dur = 3.0;
+
+      const leftP = Math.max(0, Math.min(99.0, ((track.start_time_sec || 0) / totalDur) * 100));
+      const widthP = Math.max(0.5, Math.min(100 - leftP, (dur / totalDur) * 100));
+
+      block.style.left = `${leftP.toFixed(2)}%`;
+      block.style.width = `${widthP.toFixed(2)}%`;
+
+      const titleEl = block.querySelector(".sound-block-title");
+      if (titleEl) {
+        titleEl.innerText = `${track.name} (${formatSeconds(track.start_time_sec || 0)}s)`;
+      }
+    });
+
+    if (timelinePlayhead) {
+      const pPercent = ((state.timeline.playheadSec || 0) / (state.timeline.totalDurationSec || 60.0)) * 100;
+      timelinePlayhead.style.left = `${Math.min(100, Math.max(0, pPercent)).toFixed(2)}%`;
+    }
   }
 
   function updateRulerMarkers(totalSec) {
@@ -1712,17 +1751,6 @@ function setupMultiTrackTimeline() {
         if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
           track.duration_sec = audio.duration;
           recalculateTotalDuration();
-          const row = document.querySelector(`.track-row[data-track-id="${track.id}"]`);
-          if (row) {
-            const block = row.querySelector(".sound-block");
-            if (block) {
-              const total = state.timeline.totalDurationSec || 60.0;
-              const leftP = Math.max(0, Math.min(98, ((track.start_time_sec || 0) / total) * 100));
-              const widthP = Math.max(0.5, Math.min(100 - leftP, (audio.duration / total) * 100));
-              block.style.left = `${leftP.toFixed(1)}%`;
-              block.style.width = `${widthP.toFixed(1)}%`;
-            }
-          }
         }
       }, { once: true });
     }
