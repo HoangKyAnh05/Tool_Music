@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   maximizeWindow: () => ipcRenderer.send('window:maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),
-  reloadApp: () => ipcRenderer.send('window:reload')
+  reloadApp: () => ipcRenderer.send('window:reload'),
+  openGeminiWindow: () => ipcRenderer.invoke('window:openGemini')
 });
+

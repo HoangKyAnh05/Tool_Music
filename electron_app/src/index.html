@@ -50,13 +50,20 @@
         <span class="tab-icon">🎚️</span>
         <span class="tab-label">5. Ghép Multi-Track Timeline</span>
       </button>
+      <button class="nav-tab" data-tab="tab-ai-music">
+        <span class="tab-icon">🎹</span>
+        <span class="tab-label">6. AI Tạo Nhạc & Beat</span>
+      </button>
       <button class="nav-tab" data-tab="tab-settings">
         <span class="tab-icon">⚙️</span>
-        <span class="tab-label">6. Cài Đặt</span>
+        <span class="tab-label">7. Cài Đặt</span>
       </button>
     </nav>
 
     <div class="header-right">
+      <button class="btn btn-action glow-cyan" id="btnOpenGeminiStudio" title="Mở trực tiếp Google Gemini Web Studio ngay trong App">
+        <span>✨ Google Gemini Studio</span>
+      </button>
       <button class="btn-refresh" id="btnRefreshApp" title="Làm mới lại ứng dụng">
         <span class="refresh-icon" id="refreshIcon">🔄</span>
         <span class="refresh-text">Làm Mới</span>
@@ -131,6 +138,60 @@
               <button class="btn btn-secondary mt-2" id="btnLoadSampleBeat">
                 <span>🎵 Nạp Beat Mẫu (Demo Lofi 90 BPM)</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vocal Separator & Karaoke Maker Card -->
+        <div class="studio-card glass-panel vocal-separator-card mt-3">
+          <div class="card-header">
+            <h3>🎤 Tách Lời & Tạo Beat Karaoke (Vocal Remover)</h3>
+            <span class="badge badge-amber">AI Isolator</span>
+          </div>
+
+          <div class="separator-body">
+            <p class="text-muted text-sm mb-3">
+              Tách giọng hát ra khỏi bài hát có lời để lấy <b>Bản Beat Karaoke chuẩn</b> hoặc <b>Bản Vocal Acapella</b> để remix / thu âm lại.
+            </p>
+
+            <div class="flex-gap mb-3">
+              <button class="btn btn-action glow-amber flex-1" id="btnSeparateCurrentBeat">
+                <span id="sepBtnIcon">✂️</span>
+                <span id="sepBtnText">TÁCH LỜI BÀI HÁT ĐANG CHỌN</span>
+              </button>
+              <button class="btn btn-secondary" id="btnUploadAndSeparate">
+                <span>📁 Tách Từ File Mới...</span>
+              </button>
+              <input type="file" id="separateFileInput" accept="audio/*,video/*" hidden>
+            </div>
+
+            <!-- Separated Results Display -->
+            <div class="separated-results-box" id="separatedResultsBox" style="display: none;">
+              <div class="result-row mb-2">
+                <div class="result-label">
+                  <span class="badge badge-success">🎵 Bản Beat Karaoke (Không Lời)</span>
+                </div>
+                <audio id="karaokeAudioPlayer" controls class="w-100 my-1"></audio>
+                <div class="flex-gap mt-1">
+                  <button class="btn btn-action glow-cyan btn-sm flex-1" id="btnSendKaraokeToTimeline">
+                    <span>🔥 Đưa Beat Karaoke Vào Timeline</span>
+                  </button>
+                  <a href="#" id="btnDownloadKaraoke" class="btn btn-secondary btn-sm" download="Karaoke_Beat.wav">⬇️ Tải Beat</a>
+                </div>
+              </div>
+
+              <div class="result-row mt-3">
+                <div class="result-label">
+                  <span class="badge badge-pink">🎙️ Bản Vocal Tách Riêng (Acapella)</span>
+                </div>
+                <audio id="vocalIsolatedPlayer" controls class="w-100 my-1"></audio>
+                <div class="flex-gap mt-1">
+                  <button class="btn btn-action glow-pink btn-sm flex-1" id="btnSendVocalToTimeline">
+                    <span>🔥 Đưa Vocal Vào Timeline</span>
+                  </button>
+                  <a href="#" id="btnDownloadVocal" class="btn btn-secondary btn-sm" download="Acapella_Vocal.wav">⬇️ Tải Vocal</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -796,7 +857,112 @@
       </div>
     </section>
 
-    <!-- TAB 6: SETTINGS -->
+    <!-- TAB 6: AI MUSIC & BEAT GENERATOR -->
+    <section class="tab-content" id="tab-ai-music">
+      <div class="studio-grid-2">
+        <!-- Left: AI Music Generator Controls -->
+        <div class="glass-panel">
+          <div class="card-header">
+            <h3>🎹 AI Tạo Nhạc & Beat Maker Tự Động</h3>
+            <span class="badge badge-pink">AI Music Engine</span>
+          </div>
+
+          <div class="form-group mb-3">
+            <label>Mô tả ý tưởng bản nhạc (Text-to-Music Prompt):</label>
+            <textarea id="aiMusicPrompt" class="studio-textarea" rows="3" placeholder="Ví dụ: Beat Lo-fi thư giãn với tiếng piano điện ấm áp, nhịp trống boom-bap chill..."></textarea>
+          </div>
+
+          <div class="form-group mb-3">
+            <label>Chọn nhanh thể loại nhạc (Genre Presets):</label>
+            <div class="genre-tag-grid" id="genreTagGrid">
+              <button class="genre-tag active" data-genre="lofi" data-bpm="88">☕ Lo-Fi Chill (88 BPM)</button>
+              <button class="genre-tag" data-genre="trap" data-bpm="140">🔥 Trap 808 (140 BPM)</button>
+              <button class="genre-tag" data-genre="ballad" data-bpm="95">🎹 Pop Ballad Piano (95 BPM)</button>
+              <button class="genre-tag" data-genre="edm" data-bpm="128">⚡ EDM / House (128 BPM)</button>
+              <button class="genre-tag" data-genre="rnb" data-bpm="98">🎷 R&B / Neo-Soul (98 BPM)</button>
+              <button class="genre-tag" data-genre="cyberpunk" data-bpm="120">🌆 Cyberpunk Synth (120 BPM)</button>
+              <button class="genre-tag" data-genre="acoustic" data-bpm="100">🎸 Acoustic Chill (100 BPM)</button>
+            </div>
+          </div>
+
+          <div class="form-row-3 mb-3">
+            <div class="form-group">
+              <label>Tốc độ (BPM):</label>
+              <input type="number" id="aiMusicBpm" class="studio-input" min="50" max="200" value="88">
+            </div>
+            <div class="form-group">
+              <label>Key Tone:</label>
+              <select id="aiMusicKey" class="studio-select">
+                <option value="C">C (Đô)</option>
+                <option value="C#">C# / Db</option>
+                <option value="D">D (Rê)</option>
+                <option value="D#">D# / Eb</option>
+                <option value="E">E (Mi)</option>
+                <option value="F">F (Fa)</option>
+                <option value="G">G (Sol)</option>
+                <option value="A">A (La)</option>
+                <option value="B">B (Si)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Thang Âm:</label>
+              <select id="aiMusicScale" class="studio-select">
+                <option value="Major">Major (Trưởng)</option>
+                <option value="Minor">Minor (Thứ)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group mb-4">
+            <label>Thời lượng bản Beat:</label>
+            <select id="aiMusicDuration" class="studio-select">
+              <option value="30">30 Giây (Đoạn ngắn / Demo)</option>
+              <option value="60" selected>60 Giây (1 Phút - Chuẩn bài hát)</option>
+              <option value="120">120 Giây (2 Phút - Đầy đủ)</option>
+              <option value="180">180 Giây (3 Phút - Full Track)</option>
+            </select>
+          </div>
+
+          <div class="flex-gap">
+            <button class="btn btn-primary glow-pink flex-1" id="btnGenerateAiMusic">
+              <span id="aiMusicBtnIcon">⚡</span>
+              <span id="aiMusicBtnText">AI TẠO BEAT MỚI NGAY</span>
+            </button>
+            <button class="btn btn-secondary" id="btnRandomPrompt">
+              <span>🎲 Đổi Ý Tưởng</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: AI Music Preview & Actions -->
+        <div class="glass-panel">
+          <div class="card-header">
+            <h3>🎧 Nghe Thử Bản Nhạc AI Vừa Tạo</h3>
+            <span class="badge badge-cyan" id="aiBeatMetricBadge">Chưa tạo beat</span>
+          </div>
+
+          <div class="ai-music-preview-box mt-3" id="aiMusicPreviewBox">
+            <div class="beat-info-display mb-3">
+              <h4 id="aiBeatTitle" class="gradient-text">AI Lofi Chill Beat</h4>
+              <p id="aiBeatSubtitle" class="text-muted">Nhấn "AI Tạo Beat Mới Ngay" để sinh bản nhạc hoàn chỉnh.</p>
+            </div>
+
+            <audio id="aiMusicAudioPlayer" controls class="w-100 mb-3"></audio>
+
+            <div class="ai-music-actions flex-column gap-2">
+              <button class="btn btn-action glow-cyan w-100" id="btnSendAiBeatToTimeline" disabled>
+                <span>🔥 ĐƯA VÀO TIMELINE ĐỂ THU ÂM & MIX (BƯỚC 5)</span>
+              </button>
+              <a href="#" id="btnDownloadAiBeat" class="btn btn-secondary w-100" download="AI_Beat.wav" style="pointer-events: none; opacity: 0.6;">
+                <span>⬇️ Tải File Beat Vừa Tạo (.WAV)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 7: SETTINGS -->
     <section class="tab-content" id="tab-settings">
       <div class="settings-container glass-panel">
         <div class="card-header">
@@ -862,6 +1028,79 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btnCancelModal">Hủy</button>
         <button class="btn btn-primary" id="btnApplySmartPaste">⚡ Nạp vào Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMBEDDED GOOGLE GEMINI WEB STUDIO MODAL -->
+  <div class="gemini-studio-overlay" id="geminiStudioModal" style="display: none;">
+    <div class="gemini-studio-container glass-panel">
+      <div class="gemini-studio-header">
+        <div class="gemini-header-left">
+          <span class="gemini-logo-icon">✨</span>
+          <span class="gemini-header-title">Google Gemini Web Studio (gemini.google.com)</span>
+          <span class="badge badge-pink">AI Music Generator</span>
+        </div>
+        <div class="gemini-header-actions">
+          <button class="btn btn-secondary btn-sm" id="btnReloadGeminiWebview" title="Tải lại trang Gemini">🔄 Nạp Lại</button>
+          <button class="btn btn-action glow-cyan btn-sm" id="btnOpenGeminiSeparateWindow" title="Mở ra cửa sổ riêng biệt">🪟 Mở Cửa Sổ Riêng</button>
+          <button class="btn btn-close-modal" id="btnCloseGeminiModal" title="Đóng cửa sổ Gemini">✕</button>
+        </div>
+      </div>
+
+      <div class="gemini-studio-body">
+        <!-- Left: Quick Prompt Templates for Music Generation -->
+        <div class="gemini-prompt-helper">
+          <h4 class="helper-title">💡 Mẫu Câu Lệnh Tạo Nhạc Chuẩn:</h4>
+          <p class="helper-subtitle">Bấm vào mẫu để copy câu lệnh ➔ Dán sang khung chat Gemini bên phải:</p>
+          
+          <div class="prompt-template-list">
+            <div class="prompt-template-card" data-prompt="Tạo nhạc rap, phong cách Melodic Rap & Hip-Hop hiện đại, beat 95 BPM êm dịu, bass 808 căng với lời sau: [Dán lời bài hát của bạn vào đây]">
+              <div class="template-header">
+                <span class="template-title">🎤 1. Bài Hát Rap Melodic (95 BPM)</span>
+              </div>
+              <p class="template-desc">Tạo nhạc rap 808 bass, giai điệu bắt tai, phong cách thời thượng.</p>
+              <button class="btn-copy-template">📋 Sao chép câu lệnh</button>
+            </div>
+
+            <div class="prompt-template-card" data-prompt="Sáng tác bài hát Pop Ballad da diết, đàn piano du dương và dàn dây strings cảm xúc, giọng nam trầm ấm với đoạn lời sau: [Dán lời bài hát]">
+              <div class="template-header">
+                <span class="template-title">🎹 2. Pop Ballad Piano Cảm Xúc</span>
+              </div>
+              <p class="template-desc">Giai điệu da diết, giọng hát truyền cảm, sâu lắng.</p>
+              <button class="btn-copy-template">📋 Sao chép câu lệnh</button>
+            </div>
+
+            <div class="prompt-template-card" data-prompt="Tạo bài hát Lo-Fi Chill thư giãn, tiếng đàn Rhodes ấm áp, mưa rơi nhẹ, nhịp trống boom-bap chậm rãi với lời sau: [Dán lời bài hát]">
+              <div class="template-header">
+                <span class="template-title">☕ 3. Lo-Fi Chill Hoài Niệm</span>
+              </div>
+              <p class="template-desc">Nhạc thư giãn học bài, làm việc, êm dịu.</p>
+              <button class="btn-copy-template">📋 Sao chép câu lệnh</button>
+            </div>
+
+            <div class="prompt-template-card" data-prompt="Tạo nhạc EDM / Vinahouse sôi động 132 BPM, drop bass bốc lửa, lead synth bay bổng với lời sau: [Dán lời bài hát]">
+              <div class="template-header">
+                <span class="template-title">⚡ 4. EDM / Vinahouse Bốc Lửa</span>
+              </div>
+              <p class="template-desc">Nhạc quẩy sôi động, tiệc tùng, beat đập căng.</p>
+              <button class="btn-copy-template">📋 Sao chép câu lệnh</button>
+            </div>
+          </div>
+
+          <!-- Quick Dropzone to bring downloaded video into Timeline -->
+          <div class="gemini-import-dropzone" id="geminiImportDropzone">
+            <span class="dropzone-icon">📥</span>
+            <span class="dropzone-text"><b>Kéo thả video tải từ Gemini vào đây</b> để tự động tách nhạc & đưa sang Timeline!</span>
+            <button class="btn btn-secondary btn-sm mt-2" id="btnBrowseGeminiFile">📁 Chọn File Video/Audio</button>
+            <input type="file" id="geminiVideoFileInput" accept="video/*,audio/*" hidden>
+          </div>
+        </div>
+
+        <!-- Right: Embedded Live Gemini Webview -->
+        <div class="gemini-webview-container">
+          <webview id="geminiWebview" src="https://gemini.google.com" partition="persist:gemini_session" allowpopups></webview>
+        </div>
       </div>
     </div>
   </div>

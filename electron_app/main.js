@@ -84,7 +84,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false
+      webSecurity: false,
+      webviewTag: true
     },
     frame: true,
     show: false
@@ -102,6 +103,30 @@ function createWindow() {
 }
 
 // IPC Handlers
+let geminiWindow = null;
+ipcMain.handle('window:openGemini', async () => {
+  if (geminiWindow && !geminiWindow.isDestroyed()) {
+    geminiWindow.focus();
+    return;
+  }
+  geminiWindow = new BrowserWindow({
+    width: 1060,
+    height: 840,
+    title: "Google Gemini Web Studio",
+    backgroundColor: '#131314',
+    icon: path.join(__dirname, 'src', 'assets', 'icon.png'),
+    webPreferences: {
+      partition: 'persist:gemini_session',
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+  geminiWindow.loadURL('https://gemini.google.com');
+  geminiWindow.on('closed', () => {
+    geminiWindow = null;
+  });
+});
+
 ipcMain.handle('dialog:selectBeatFile', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Chọn file Beat Audio',

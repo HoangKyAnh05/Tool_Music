@@ -25,8 +25,10 @@ from audio_engine import (
     render_multitrack_timeline,
     auto_tune_vocal,
     apply_voice_effect_preset,
-    extract_audio_from_video
+    extract_audio_from_video,
+    separate_vocals_and_beat
 )
+from ai_music_generator import generate_ai_beat
 from ai_lyricist import generate_lyrics_ai, parse_smart_paste, normalize_song_data
 from tts_engine import get_available_voices, generate_vocal_track
 
@@ -129,10 +131,83 @@ class SettingsRequest(BaseModel):
     default_voice: Optional[str] = "vi-VN-HoaiMyNeural"
 
 
+class AIMusicGenerateRequest(BaseModel):
+    prompt: Optional[str] = "Lofi Chill Beat"
+    genre: Optional[str] = "lofi"
+    bpm: Optional[float] = 90.0
+    key: Optional[str] = "C"
+    scale: Optional[str] = "Major"
+    duration_sec: Optional[float] = 60.0
+
+
 # API Endpoints
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "message": "AI Music & Vocal Studio Backend Running!"}
+
+
+@app.post("/api/generate-ai-music")
+async def api_generate_ai_music(req: AIMusicGenerateRequest):
+    """Generates AI music and backing beat based on prompt & musical parameters."""
+    try:
+        data = generate_ai_beat(
+            prompt=req.prompt or "Lofi Chill Beat",
+            genre=req.genre or "lofi",
+            bpm=req.bpm or 90.0,
+            key=req.key or "C",
+            scale=req.scale or "Major",
+            duration_sec=req.duration_sec or 60.0,
+            output_dir=str(UPLOADS_DIR)
+        )
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tạo nhạc AI: {str(e)}")
+
+
+class SeparateVocalsRequest(BaseModel):
+    audio_path: Optional[str] = None
+
+
+@app.post("/api/separate-vocals-karaoke")
+async def api_separate_vocals_karaoke(req: Optional[SeparateVocalsRequest] = None):
+    """
+    Separates full songs with lyrics into:
+    - Clean Karaoke Instrumental Beat (.wav)
+    - Isolated Acapella Vocal Track (.wav)
+    """
+    try:
+        audio_path = req.audio_path if req else None
+        resolved_path = None
+        if audio_path:
+            resolved_path = resolve_audio_file_path(audio_path)
+        
+        if not resolved_path or not os.path.exists(resolved_path):
+            demo_path = UPLOADS_DIR / "demo_beat_lofi_90bpm.wav"
+            if demo_path.exists():
+                resolved_path = str(demo_path)
+            else:
+                raise HTTPException(status_code=400, detail="Không tìm thấy file âm thanh để tách lời.")
+
+        data = separate_vocals_and_beat(resolved_path, output_dir=str(UPLOADS_DIR))
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tách lời karaoke: {str(e)}")
+
+
+@app.post("/api/separate-vocals-upload")
+async def api_separate_vocals_upload(file: UploadFile = File(...)):
+    """Uploads a song and separates into Karaoke Beat + Acapella Vocals."""
+    try:
+        timestamp = int(time.time())
+        clean_filename = f"song_to_separate_{timestamp}_{file.filename.replace(' ', '_')}"
+        save_path = UPLOADS_DIR / clean_filename
+        with open(save_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        data = separate_vocals_and_beat(str(save_path), output_dir=str(UPLOADS_DIR))
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tách lời karaoke: {str(e)}")
 
 
 @app.get("/api/voices")
@@ -182,24 +257,65 @@ async def upload_and_analyze_beat(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích beat: {str(e)}")
 
 
+def resolve_audio_file_path(p: Optional[str]) -> Path:
+    if p and str(p).strip():
+        clean = str(p).replace("\\", "/")
+        if "://" in clean:
+            clean = "/" + clean.split("://", 1)[1].split("/", 1)[-1]
+
+        if "uploads/" in clean:
+            fname = clean.split("uploads/")[-1]
+            target = UPLOADS_DIR / fname
+            if target.exists():
+                return target
+        if "vocals/" in clean:
+            fname = clean.split("vocals/")[-1]
+            target = VOCALS_DIR / fname
+            if target.exists():
+                return target
+        if "outputs/" in clean:
+            fname = clean.split("outputs/")[-1]
+            target = OUTPUTS_DIR / fname
+            if target.exists():
+                return target
+
+        direct = Path(clean)
+        if direct.is_absolute() and direct.exists():
+            return direct
+
+        rel = BASE_DIR / clean.lstrip("/")
+        if rel.exists():
+            return rel
+
+    # Check for any audio in uploads
+    uploads_files = sorted(list(UPLOADS_DIR.glob("*.wav")) + list(UPLOADS_DIR.glob("*.mp3")), key=os.path.getmtime, reverse=True)
+    if uploads_files:
+        return uploads_files[0]
+
+    demo_beat = UPLOADS_DIR / "demo_beat_lofi_90bpm.wav"
+    if not demo_beat.exists():
+        try:
+            sys.path.append(str(BASE_DIR))
+            from data.generate_sample_beat import generate_demo_beat
+            generate_demo_beat(str(demo_beat), duration_sec=60.0)
+        except Exception:
+            pass
+
+    return demo_beat
+
+
 @app.post("/api/detect-beat-structure")
 async def api_detect_beat_structure(req: dict):
     """Detects Intro, Verse, Drop/Bassline, and Outro sections from a beat file."""
     try:
-        beat_path = req.get("beat_path")
-        if not beat_path:
-            demo_beat = UPLOADS_DIR / "demo_beat_lofi_90bpm.wav"
-            if demo_beat.exists():
-                beat_path = str(demo_beat)
-
-        bp = Path(beat_path)
-        if not bp.is_absolute():
-            bp = BASE_DIR / beat_path
+        raw_path = req.get("beat_path")
+        bp = resolve_audio_file_path(raw_path)
 
         if not bp.exists():
-            raise HTTPException(status_code=404, detail="File Beat không tồn tại.")
+            raise HTTPException(status_code=404, detail="Không tìm thấy file Beat để phân tích.")
 
         structure = detect_beat_structure(str(bp))
+        structure["beat_filepath"] = str(bp)
         return structure
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích cấu trúc beat: {str(e)}")
