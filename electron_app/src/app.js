@@ -413,10 +413,9 @@ async function uploadAndAnalyzeBeat(file) {
         state.timeline.tracks[0].filepath = data.server_filepath;
         state.timeline.tracks[0].name = data.filename;
         state.timeline.tracks[0].duration_sec = data.duration_seconds;
-        const blockT1 = document.getElementById("blockTrack1");
-        const titleT1 = document.getElementById("blockTrack1Title");
-        if (blockT1) blockT1.style.display = "flex";
-        if (titleT1) titleT1.innerText = `${data.filename} (${formatSeconds(0)}s)`;
+        if (typeof window.renderTimelineDOM === "function") {
+          window.renderTimelineDOM();
+        }
       }
 
       // Update UI
@@ -785,10 +784,10 @@ function setupMixerControls() {
         if (state.timeline && state.timeline.tracks[3]) {
           state.timeline.tracks[3].filepath = json.vocal_url;
           state.timeline.tracks[3].name = `Giọng Hát AI (${voiceSelect.options[voiceSelect.selectedIndex].text})`;
-          const blockT4 = document.getElementById("blockTrack4");
-          const titleT4 = document.getElementById("blockTrack4Title");
-          if (blockT4) blockT4.style.display = "flex";
-          if (titleT4) titleT4.innerText = `${state.timeline.tracks[3].name} (${formatSeconds(state.timeline.tracks[3].start_time_sec)}s)`;
+          state.timeline.tracks[3].isVocal = true;
+          if (typeof window.renderTimelineDOM === "function") {
+            window.renderTimelineDOM();
+          }
         }
 
         showToast("Mix bài hát thành công! Hãy nhấn Play để thưởng thức!", "success");
@@ -895,10 +894,9 @@ function loadDemoBeatData() {
     state.timeline.tracks[0].filepath = `data/uploads/${demoFilename}`;
     state.timeline.tracks[0].name = "Beat Lofi 90 BPM";
     state.timeline.tracks[0].duration_sec = 32.0;
-    const blockT1 = document.getElementById("blockTrack1");
-    const titleT1 = document.getElementById("blockTrack1Title");
-    if (blockT1) blockT1.style.display = "flex";
-    if (titleT1) titleT1.innerText = `Beat Lofi 90 BPM (${formatSeconds(0)}s)`;
+    if (typeof window.renderTimelineDOM === "function") {
+      window.renderTimelineDOM();
+    }
   }
 
   // Generate pleasant waveform peaks
@@ -1068,8 +1066,10 @@ function setupVideoExtraction() {
         // Update Timeline Track 1 with this extracted audio
         state.timeline.tracks[0].filepath = d.server_filepath;
         state.timeline.tracks[0].name = `Video Audio: ${videoFile.name}`;
-        const t1Title = document.getElementById("blockTrack1Title");
-        if (t1Title) t1Title.innerText = `Audio từ Video (00:00.0s)`;
+        state.timeline.tracks[0].duration_sec = d.duration;
+        if (typeof window.renderTimelineDOM === "function") {
+          window.renderTimelineDOM();
+        }
 
         // Update metrics
         metricBpm.innerText = d.bpm.toFixed(1);
@@ -1543,10 +1543,15 @@ function setupAutoTuneControls() {
     }
 
     // Set Track 3 in Timeline
-    state.timeline.tracks[2].filepath = vocalPathToUse;
-    state.timeline.tracks[2].name = "Vocal Thu Âm (Auto-Tuned)";
-    const t3Title = document.getElementById("blockTrack3Title");
-    if (t3Title) t3Title.innerText = `Vocal Thu Âm (${formatSeconds(state.timeline.tracks[2].start_time_sec)}s)`;
+    if (state.timeline.tracks[2]) {
+      state.timeline.tracks[2].filepath = vocalPathToUse;
+      state.timeline.tracks[2].rawFilepath = state.recording.rawVocalPath || vocalPathToUse;
+      state.timeline.tracks[2].name = "Vocal Thu Âm (Auto-Tuned)";
+      state.timeline.tracks[2].isVocal = true;
+    }
+    if (typeof window.renderTimelineDOM === "function") {
+      window.renderTimelineDOM();
+    }
 
     switchTab("tab-timeline");
     showToast("✅ Đã đẩy bản thu âm vào Track 3 của Multi-Track Timeline!", "success");
@@ -2676,6 +2681,12 @@ function setupMultiTrackTimeline() {
     }
   });
 
+  // Expose methods for other modules
+  window.renderTimelineDOM = renderTimelineDOM;
+  window.trackAudioPool = trackAudioPool;
+  window.addNewTrack = addNewTrack;
+  window.recalculateTotalDuration = recalculateTotalDuration;
+
   // Initial Render of Timeline DOM
   renderTimelineDOM();
 }
@@ -2839,9 +2850,13 @@ function setupAIMusicGenerator() {
 
       state.timeline.totalDurationSec = Math.max(60.0, lastGeneratedBeat.duration_seconds + 15.0);
 
+      // Re-render Timeline DOM
+      if (typeof window.renderTimelineDOM === "function") {
+        window.renderTimelineDOM();
+      }
+
       // Switch to Timeline tab
-      const timelineTabBtn = document.querySelector('.nav-tab[data-tab="tab-timeline"]');
-      if (timelineTabBtn) timelineTabBtn.click();
+      switchTab("tab-timeline");
 
       showToast("🚀 Đã nạp Beat AI vào Track 1 trên Timeline! Bạn có thể đặt vạch đỏ và thu âm ngay.", "success");
     });
@@ -3108,27 +3123,51 @@ function setupVocalSeparator() {
   // Send Karaoke Beat to Step 5 Timeline
   if (btnSendKaraoke) {
     btnSendKaraoke.addEventListener("click", () => {
-      if (!lastSeparatedData || !lastSeparatedData.karaoke_path) {
-        showToast("⚠️ Chưa có bản Beat Karaoke nào!", "warning");
+      let karaokePath = lastSeparatedData && lastSeparatedData.karaoke_path;
+      let karaokeUrl = lastSeparatedData && lastSeparatedData.karaoke_url;
+      let duration = (lastSeparatedData && lastSeparatedData.duration_seconds) || (karaokePlayer && karaokePlayer.duration) || 32.0;
+
+      if (!karaokePath && karaokePlayer && karaokePlayer.src) {
+        karaokeUrl = karaokePlayer.src;
+        karaokePath = karaokePlayer.src;
+      }
+
+      if (!karaokePath) {
+        showToast("⚠️ Chưa có bản Beat Karaoke nào để đưa vào Timeline!", "warning");
         return;
       }
 
-      state.beat.serverPath = lastSeparatedData.karaoke_path;
-      state.beat.url = `${API_BASE}${lastSeparatedData.karaoke_url}`;
-      state.beat.duration = lastSeparatedData.duration_seconds;
+      state.beat.serverPath = karaokePath;
+      state.beat.url = karaokeUrl ? (karaokeUrl.startsWith("http") ? karaokeUrl : `${API_BASE}${karaokeUrl}`) : `${API_BASE}/${karaokePath}`;
+      state.beat.duration = duration;
 
       if (state.timeline.tracks.length > 0) {
-        state.timeline.tracks[0].filepath = lastSeparatedData.karaoke_path;
+        state.timeline.tracks[0].filepath = karaokePath;
         state.timeline.tracks[0].name = "🎵 Beat Karaoke (Đã tách lời)";
-        state.timeline.tracks[0].duration_sec = lastSeparatedData.duration_seconds;
+        state.timeline.tracks[0].duration_sec = duration;
         state.timeline.tracks[0].isVocal = false;
+      } else {
+        state.timeline.tracks.push({
+          id: "track_1",
+          name: "🎵 Beat Karaoke (Đã tách lời)",
+          filepath: karaokePath,
+          start_time_sec: 0.0,
+          duration_sec: duration,
+          volume: 1.0,
+          muted: false,
+          isVocal: false
+        });
       }
 
-      state.timeline.totalDurationSec = Math.max(60.0, lastSeparatedData.duration_seconds + 15.0);
+      state.timeline.totalDurationSec = Math.max(60.0, duration + 15.0);
+
+      // Re-render Timeline
+      if (typeof window.renderTimelineDOM === "function") {
+        window.renderTimelineDOM();
+      }
 
       // Switch to Timeline
-      const timelineTabBtn = document.querySelector('.nav-tab[data-tab="tab-timeline"]');
-      if (timelineTabBtn) timelineTabBtn.click();
+      switchTab("tab-timeline");
 
       showToast("🚀 Đã nạp Bản Beat Karaoke vào Track 1 trên Timeline! Bạn có thể thu âm giọng hát mới ngay.", "success");
     });
@@ -3137,38 +3176,67 @@ function setupVocalSeparator() {
   // Send Isolated Vocal to Step 5 Timeline
   if (btnSendVocal) {
     btnSendVocal.addEventListener("click", () => {
-      if (!lastSeparatedData || !lastSeparatedData.vocal_path) {
-        showToast("⚠️ Chưa có bản Vocal nào!", "warning");
+      let vocalPath = lastSeparatedData && lastSeparatedData.vocal_path;
+      let vocalUrl = lastSeparatedData && lastSeparatedData.vocal_url;
+      let duration = (lastSeparatedData && lastSeparatedData.duration_seconds) || (vocalPlayer && vocalPlayer.duration) || 30.0;
+
+      if (!vocalPath && vocalPlayer && vocalPlayer.src) {
+        vocalUrl = vocalPlayer.src;
+        vocalPath = vocalPlayer.src;
+      }
+
+      if (!vocalPath) {
+        showToast("⚠️ Chưa có bản Vocal nào để đưa vào Timeline!", "warning");
         return;
       }
 
-      let vocalTrack = state.timeline.tracks.find((t) => t.isVocal || t.name.toLowerCase().includes("vocal"));
+      // Look for an existing Vocal track or Track 3 or empty track
+      let vocalTrack = state.timeline.tracks.find((t) => t.isVocal || t.name.toLowerCase().includes("vocal") || t.id === "track_3");
       if (!vocalTrack) {
+        vocalTrack = state.timeline.tracks.find((t) => !t.filepath || t.filepath.trim() === "");
+      }
+
+      if (vocalTrack) {
+        vocalTrack.filepath = vocalPath;
+        vocalTrack.rawFilepath = vocalPath;
+        vocalTrack.name = "🎙️ Acapella Vocal (Đã tách)";
+        vocalTrack.duration_sec = duration;
+        vocalTrack.isVocal = true;
+        vocalTrack.start_time_sec = vocalTrack.start_time_sec || 0.0;
+      } else {
         vocalTrack = {
           id: `track_vocal_${Date.now()}`,
           name: "🎙️ Acapella Vocal (Đã tách)",
-          filepath: lastSeparatedData.vocal_path,
+          filepath: vocalPath,
+          rawFilepath: vocalPath,
           start_time_sec: 0.0,
-          duration_sec: lastSeparatedData.duration_seconds,
+          duration_sec: duration,
           volume: 1.2,
           muted: false,
           isVocal: true,
           colorClass: "block-pink"
         };
         state.timeline.tracks.push(vocalTrack);
-      } else {
-        vocalTrack.filepath = lastSeparatedData.vocal_path;
-        vocalTrack.name = "🎙️ Acapella Vocal (Đã tách)";
-        vocalTrack.duration_sec = lastSeparatedData.duration_seconds;
       }
 
-      state.timeline.totalDurationSec = Math.max(60.0, lastSeparatedData.duration_seconds + 15.0);
+      // Sync to Step 4 Auto-Tune / Voice Studio so user can immediately auto-tune this extracted vocal
+      state.recording.rawVocalPath = vocalPath;
+      const rawRecordAudioPlayer = document.getElementById("rawRecordAudioPlayer");
+      if (rawRecordAudioPlayer) {
+        rawRecordAudioPlayer.src = vocalUrl ? (vocalUrl.startsWith("http") ? vocalUrl : `${API_BASE}${vocalUrl}`) : `${API_BASE}/${vocalPath}`;
+      }
+
+      state.timeline.totalDurationSec = Math.max(60.0, duration + 15.0);
+
+      // Re-render Timeline
+      if (typeof window.renderTimelineDOM === "function") {
+        window.renderTimelineDOM();
+      }
 
       // Switch to Timeline
-      const timelineTabBtn = document.querySelector('.nav-tab[data-tab="tab-timeline"]');
-      if (timelineTabBtn) timelineTabBtn.click();
+      switchTab("tab-timeline");
 
-      showToast("🚀 Đã nạp Bản Vocal Acapella vào Timeline để bạn chỉnh Auto-Tune hoặc Remix!", "success");
+      showToast("🚀 Đã nạp Bản Vocal Acapella vào Timeline! Bạn có thể bấm 🪄 Auto-Tune trên khối để nắn tone.", "success");
     });
   }
 }
