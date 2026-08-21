@@ -31,20 +31,28 @@
     <!-- Navigation Tabs -->
     <nav class="studio-nav">
       <button class="nav-tab active" data-tab="tab-beat">
-        <span class="tab-icon">🎚️</span>
-        <span class="tab-label">1. Beat & BPM Analyzer</span>
+        <span class="tab-icon">🎵</span>
+        <span class="tab-label">1. Beat & Đo Nhịp</span>
       </button>
       <button class="nav-tab" data-tab="tab-lyrics">
         <span class="tab-icon">✍️</span>
-        <span class="tab-label">2. AI Lyricist & Smart Paste</span>
+        <span class="tab-label">2. AI Soạn & Dán Lời</span>
       </button>
       <button class="nav-tab" data-tab="tab-mixer">
-        <span class="tab-icon">🎛️</span>
-        <span class="tab-label">3. Vocal & Master Mixer</span>
+        <span class="tab-icon">🎙️</span>
+        <span class="tab-label">3. AI Vocal & Mix</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-recorder">
+        <span class="tab-icon">🔴</span>
+        <span class="tab-label">4. Thu Âm & Auto-Tune</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-timeline">
+        <span class="tab-icon">🎚️</span>
+        <span class="tab-label">5. Ghép Multi-Track Timeline</span>
       </button>
       <button class="nav-tab" data-tab="tab-settings">
         <span class="tab-icon">⚙️</span>
-        <span class="tab-label">4. Cài Đặt</span>
+        <span class="tab-label">6. Cài Đặt</span>
       </button>
     </nav>
 
@@ -68,7 +76,7 @@
       <div class="step-progress-group">
         <div class="step-item active" data-step="tab-beat">
           <span class="step-num">BƯỚC 1</span>
-          <span class="step-title">📁 Nạp & Đo Beat</span>
+          <span class="step-title">📁 Nạp / Tách Beat</span>
         </div>
         <div class="step-arrow">➔</div>
         <div class="step-item" data-step="tab-lyrics">
@@ -78,7 +86,17 @@
         <div class="step-arrow">➔</div>
         <div class="step-item" data-step="tab-mixer">
           <span class="step-num">BƯỚC 3</span>
-          <span class="step-title">🎙️ Chọn Giọng & Mix Nhạc</span>
+          <span class="step-title">🎙️ Giọng AI & Mix</span>
+        </div>
+        <div class="step-arrow">➔</div>
+        <div class="step-item" data-step="tab-recorder">
+          <span class="step-num">BƯỚC 4</span>
+          <span class="step-title">🔴 Thu Âm & Auto-Tune</span>
+        </div>
+        <div class="step-arrow">➔</div>
+        <div class="step-item" data-step="tab-timeline">
+          <span class="step-num">BƯỚC 5</span>
+          <span class="step-title">🎚️ Ghép Multi-Track</span>
         </div>
       </div>
       <button class="btn btn-demo-auto" id="btnAutoLoadFullDemo" title="Tự động nạp Beat mẫu + Lời mẫu + Cấu hình Mix mẫu để test ngay lập tức">
@@ -89,9 +107,10 @@
     <!-- TAB 1: BEAT & ANALYZER -->
     <section class="tab-content active" id="tab-beat">
       <div class="grid-layout beat-grid">
-        <!-- Beat Upload Card -->
+        <!-- Beat & Video Upload Card -->
         <div class="studio-card glass-panel dropzone-card" id="dropZone">
           <input type="file" id="beatFileInput" accept="audio/*" hidden>
+          <input type="file" id="videoFileInput" accept="video/*" hidden>
           <div class="dropzone-content">
             <div class="drop-icon-anim">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -100,11 +119,14 @@
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <h3>Kéo thả file Beat hoặc Nhấn để tải lên</h3>
-            <p class="subtitle">Hỗ trợ định dạng .mp3, .wav, .flac, .ogg, .m4a</p>
+            <h3>Kéo thả file Âm thanh hoặc Video vào đây</h3>
+            <p class="subtitle">Hỗ trợ Beat (.mp3, .wav, .flac) và Video (.mp4, .mov, .mkv, .webm)</p>
             <div class="button-group-vertical">
               <button class="btn btn-primary" id="btnSelectBeat">
                 <span>📁 Chọn file Beat từ máy</span>
+              </button>
+              <button class="btn btn-action glow-violet mt-2" id="btnSelectVideo">
+                <span>🎬 Tách Sound / Âm Thanh Từ Video</span>
               </button>
               <button class="btn btn-secondary mt-2" id="btnLoadSampleBeat">
                 <span>🎵 Nạp Beat Mẫu (Demo Lofi 90 BPM)</span>
@@ -501,7 +523,269 @@
       </div>
     </section>
 
-    <!-- TAB 4: SETTINGS -->
+    <!-- TAB 4: STUDIO VOICE RECORDER & AUTO-TUNE -->
+    <section class="tab-content" id="tab-recorder">
+      <div class="grid-layout recorder-grid">
+        
+        <!-- Left Card: Microphone Live Studio Recorder -->
+        <div class="studio-card glass-panel recorder-card">
+          <div class="card-header">
+            <h3>🎙️ Phòng Thu Âm Trực Tiếp (Live Mic Studio)</h3>
+            <span class="live-rec-badge" id="liveRecBadge">⚪ Sẵn sàng thu âm</span>
+          </div>
+
+          <div class="recorder-visualizer-box">
+            <canvas id="recorderWaveCanvas" width="500" height="120"></canvas>
+            <div class="rec-timer-overlay" id="recTimerText">00:00</div>
+          </div>
+
+          <div class="recorder-controls-row">
+            <button class="btn-record-main" id="btnToggleRecord">
+              <span class="record-dot" id="recordDot"></span>
+              <span id="recordBtnLabel">🔴 BẮT ĐẦU THU ÂM</span>
+            </button>
+          </div>
+
+          <div class="recorder-options-bar">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="chkCountIn" checked>
+              <span>⏱️ Đếm nhịp 3-2-1 trước khi thu</span>
+            </label>
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="chkPlayBeatWhileRecording" checked>
+              <span>🎧 Phát Beat nền khi đang thu</span>
+            </label>
+          </div>
+
+          <div class="raw-audio-playback-box mt-3">
+            <label class="section-label">Bản thu gốc mộc (Raw Mic Recording):</label>
+            <audio id="rawRecordAudioPlayer" controls class="w-100 mt-1"></audio>
+          </div>
+        </div>
+
+        <!-- Right Card: Auto-Tune & Voice FX Processor -->
+        <div class="studio-card glass-panel autotune-card">
+          <div class="card-header">
+            <h3>🪄 Auto-Tune & Bộ Hiệu Ứng Giọng Hát</h3>
+            <span class="badge badge-accent">Pitch & Voice FX</span>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label>Tone Bài Hát (Key):</label>
+              <select id="autoTuneKeySelect" class="studio-select">
+                <option value="C" selected>C (Đô)</option>
+                <option value="C#">C# / Db</option>
+                <option value="D">D (Rê)</option>
+                <option value="D#">D# / Eb</option>
+                <option value="E">E (Mi)</option>
+                <option value="F">F (Fa)</option>
+                <option value="F#">F# / Gb</option>
+                <option value="G">G (Sol)</option>
+                <option value="G#">G# / Ab</option>
+                <option value="A">A (La)</option>
+                <option value="A#">A# / Bb</option>
+                <option value="B">B (Si)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Thang Âm (Scale):</label>
+              <select id="autoTuneScaleSelect" class="studio-select">
+                <option value="Major" selected>Major (Trưởng - Tươi vui, rạng rỡ)</option>
+                <option value="Minor">Minor (Thứ - Sâu lắng, buồn)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="slider-row mt-2">
+            <div class="slider-label-box">
+              <span>Độ bẻ Auto-Tune (Tune Speed / Tightness):</span>
+              <span class="slider-num-value" id="valAutoTuneSpeed">80% (Trap / Pop)</span>
+            </div>
+            <input type="range" id="autoTuneSpeedSlider" class="custom-slider" min="0" max="100" value="80">
+          </div>
+
+          <div class="form-group mt-3">
+            <label>Hiệu Ứng Biến Đổi Giọng (Creative Voice Preset):</label>
+            <select id="voiceEffectSelect" class="studio-select">
+              <option value="none" selected>Không dùng hiệu ứng phụ (Chỉ Auto-Tune)</option>
+              <option value="chorus_doubler">🌌 Stereo Chorus Doubler (Hát bè đôi 2 tai nghe)</option>
+              <option value="robot_cyber">🤖 Cyber Vocoder (Giọng Robot Điện Tử)</option>
+              <option value="vintage_radio">📻 Vintage Radio / Lo-Fi Telephone</option>
+              <option value="chipmunk">🐿️ Chipmunk (Nữ cao hoạt hình +4st)</option>
+              <option value="deep_monster">👹 Deep Monster (Nam siêu trầm -4st)</option>
+            </select>
+          </div>
+
+          <div class="button-action-group mt-3">
+            <button class="btn btn-primary w-100 glow-cyan" id="btnApplyAutoTune">
+              <span>🪄 Áp Dụng Auto-Tune & Xử Lý Giọng Hát</span>
+            </button>
+          </div>
+
+          <div class="tuned-playback-box mt-3">
+            <label class="section-label">Bản thu sau khi xử lý Auto-Tune & Voice FX:</label>
+            <audio id="tunedRecordAudioPlayer" controls class="w-100 mt-1"></audio>
+          </div>
+
+          <div class="push-timeline-box mt-3">
+            <button class="btn btn-action glow-violet w-100" id="btnPushRecToTimeline">
+              <span>➕ Đẩy Bản Thu Này Sang Multi-Track Timeline Để Ghép ➔</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 5: MULTI-TRACK TIMELINE & SOUND SEQUENCER -->
+    <section class="tab-content" id="tab-timeline">
+      <div class="timeline-workspace glass-panel">
+        
+        <!-- Timeline Top Action Toolbar -->
+        <div class="timeline-toolbar">
+          <div class="timeline-transport-controls">
+            <button class="btn-transport" id="btnPlayPauseTimeline">
+              <span id="timelinePlayIcon">▶</span>
+              <span id="timelinePlayText">Phát Timeline</span>
+            </button>
+            <button class="btn-transport btn-transport-stop" id="btnStopTimeline">
+              <span>⏹ Dừng</span>
+            </button>
+            <div class="timeline-time-display">
+              <span id="timelineCurrentTime">00:00.0</span> / <span id="timelineTotalTime">00:45.0</span>
+            </div>
+          </div>
+
+          <div class="timeline-toolbar-actions">
+            <button class="btn btn-secondary" id="btnAddAudioFileToTimeline">
+              <span>➕ Thêm File Sound / Beat</span>
+            </button>
+            <button class="btn btn-primary glow-pink" id="btnRenderTimelineMaster">
+              <span>🔥 GHÉP & XUẤT MASTER TIMELINE (1-CLICK)</span>
+            </button>
+          </div>
+        </div>
+
+        <input type="file" id="timelineAudioFileInput" accept="audio/*" hidden>
+
+        <!-- Timeline Visual Area -->
+        <div class="timeline-scroll-container">
+          
+          <!-- Timeline Time Ruler -->
+          <div class="timeline-ruler" id="timelineRuler">
+            <div class="ruler-marker" style="left: 0%;">00:00</div>
+            <div class="ruler-marker" style="left: 20%;">00:10</div>
+            <div class="ruler-marker" style="left: 40%;">00:20</div>
+            <div class="ruler-marker" style="left: 60%;">00:30</div>
+            <div class="ruler-marker" style="left: 80%;">00:40</div>
+            <div class="ruler-marker" style="left: 100%;">00:50</div>
+            <!-- Playhead line -->
+            <div class="timeline-playhead-line" id="timelinePlayhead"></div>
+          </div>
+
+          <!-- Multi-Track Lanes Container -->
+          <div class="timeline-tracks-list" id="timelineTracksList">
+            
+            <!-- Track 1: Beat Chính -->
+            <div class="track-row" data-track-id="track_1">
+              <div class="track-header">
+                <span class="track-badge badge-cyan">TRACK 1</span>
+                <span class="track-title" id="track1Name">🎵 Beat Nhạc Chính</span>
+                <div class="track-mini-controls">
+                  <span class="vol-label">Vol:</span>
+                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.0">
+                  <button class="btn-mute" title="Mute Track">M</button>
+                </div>
+              </div>
+              <div class="track-lane" id="laneTrack1">
+                <div class="sound-block block-cyan" id="blockTrack1" style="left: 0%; width: 64%;">
+                  <span class="sound-block-drag-handle">⠿</span>
+                  <span class="sound-block-title" id="blockTrack1Title">Beat Lofi 90 BPM (00:00.0s)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Track 2: Sound FX / Intro -->
+            <div class="track-row" data-track-id="track_2">
+              <div class="track-header">
+                <span class="track-badge badge-amber">TRACK 2</span>
+                <span class="track-title" id="track2Name">🥁 Sound FX / Drop / Intro</span>
+                <div class="track-mini-controls">
+                  <span class="vol-label">Vol:</span>
+                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="0.9">
+                  <button class="btn-mute" title="Mute Track">M</button>
+                </div>
+              </div>
+              <div class="track-lane" id="laneTrack2">
+                <div class="sound-block block-amber" id="blockTrack2" style="left: 24%; width: 25%;">
+                  <span class="sound-block-drag-handle">⠿</span>
+                  <span class="sound-block-title" id="blockTrack2Title">Sound FX Drop (00:12.0s)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Track 3: Vocal Thu Âm Micro -->
+            <div class="track-row" data-track-id="track_3">
+              <div class="track-header">
+                <span class="track-badge badge-pink">TRACK 3</span>
+                <span class="track-title" id="track3Name">🔴 Giọng Hát Thu Âm (Auto-Tune)</span>
+                <div class="track-mini-controls">
+                  <span class="vol-label">Vol:</span>
+                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.2">
+                  <button class="btn-mute" title="Mute Track">M</button>
+                </div>
+              </div>
+              <div class="track-lane" id="laneTrack3">
+                <div class="sound-block block-pink" id="blockTrack3" style="left: 8%; width: 45%;">
+                  <span class="sound-block-drag-handle">⠿</span>
+                  <span class="sound-block-title" id="blockTrack3Title">Vocal Thu Âm (00:04.0s)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Track 4: Giọng Hát AI -->
+            <div class="track-row" data-track-id="track_4">
+              <div class="track-header">
+                <span class="track-badge badge-violet">TRACK 4</span>
+                <span class="track-title" id="track4Name">🤖 Giọng Hát AI (Neural Vocal)</span>
+                <div class="track-mini-controls">
+                  <span class="vol-label">Vol:</span>
+                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.15">
+                  <button class="btn-mute" title="Mute Track">M</button>
+                </div>
+              </div>
+              <div class="track-lane" id="laneTrack4">
+                <div class="sound-block block-violet" id="blockTrack4" style="left: 16%; width: 55%;">
+                  <span class="sound-block-drag-handle">⠿</span>
+                  <span class="sound-block-title" id="blockTrack4Title">AI Vocal Hoài My (00:08.0s)</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="timeline-hint-box">
+          <span>💡 <b>Mẹo Kéo Thả:</b> Bạn có thể giữ chuột vào bất kỳ khối âm thanh nào rồi <b>kéo trượt sang trái hoặc sang phải</b> để căn chỉnh thời điểm phát chính xác từng giây!</span>
+        </div>
+
+        <!-- Master Rendered Audio Player for Timeline -->
+        <div class="timeline-master-result-card glass-panel mt-3" id="timelineMasterResultCard" style="display: none;">
+          <div class="card-header">
+            <h3>🎉 Bản Nhạc Master Sau Khi Ghép Đa Track:</h3>
+            <a href="#" id="btnDownloadTimelineMaster" class="btn btn-download" download="MultiTrack_Master.mp3">
+              <span>⬇️ Tải File Nhạc Đã Ghép (.MP3)</span>
+            </a>
+          </div>
+          <audio id="timelineMasterAudioPlayer" controls class="w-100 mt-2"></audio>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 6: SETTINGS -->
     <section class="tab-content" id="tab-settings">
       <div class="settings-container glass-panel">
         <div class="card-header">

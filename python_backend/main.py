@@ -18,7 +18,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from audio_engine import analyze_beat, mix_beat_and_vocals
+from audio_engine import (
+    analyze_beat,
+    mix_beat_and_vocals,
+    render_multitrack_timeline,
+    auto_tune_vocal,
+    apply_voice_effect_preset,
+    extract_audio_from_video
+)
 from ai_lyricist import generate_lyrics_ai, parse_smart_paste, normalize_song_data
 from tts_engine import get_available_voices, generate_vocal_track
 
@@ -46,41 +53,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static folders for audio streaming
+# Mount static directories
 app.mount("/static/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.mount("/static/vocals", StaticFiles(directory=str(VOCALS_DIR)), name="vocals")
 app.mount("/static/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
 
 
-def load_config() -> dict:
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {"gemini_api_key": "", "default_voice": "vi-VN-HoaiMyNeural", "theme": "dark_studio"}
-
-
-def save_config(config_data: dict):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, ensure_ascii=False, indent=2)
-
-
-# --- Request Models ---
-
-class LyricsRequest(BaseModel):
+# Pydantic Request Models
+class OptimizeLyricsRequest(BaseModel):
     prompt_idea: str
-    genre: str = "V-Pop Ballad"
-    bpm: float = 90.0
-    key: str = "C Major"
-    mood: str = "Sâu lắng, cảm xúc"
-    voice_style: str = "Nam trầm ấm"
-    gemini_api_key: Optional[str] = None
+    genre: Optional[str] = "V-Pop Ballad"
+    bpm: Optional[float] = 90.0
+    key: Optional[str] = "C Major"
+    mood: Optional[str] = "Sâu lắng, cảm xúc"
+    api_key: Optional[str] = None
 
 
 class SmartPasteRequest(BaseModel):
     clipboard_text: str
+
+
+class VocalOnlyRequest(BaseModel):
+    lyrics: Dict[str, str]
+    voice_id: str = "vi-VN-HoaiMyNeural"
+    speed_percent: int = 0
+    pitch_hz: int = 0
 
 
 class MixSongRequest(BaseModel):
@@ -91,91 +88,208 @@ class MixSongRequest(BaseModel):
     pitch_hz: int = 0
     mix_settings: Dict[str, Any] = {
         "beat_volume": 1.0,
-        "vocal_volume": 1.2,
+        "vocal_volume": 1.25,
         "reverb": 0.35,
         "delay": 0.15,
         "compressor": True,
-        "eq_preset": "warm_vocal",
-        "vocal_offset_ms": 0
+        "eq_preset": "warm_vocal"
     }
-    song_title: Optional[str] = "My_AI_Song"
+    song_title: Optional[str] = "AI_Master_Song"
 
 
-class VocalOnlyRequest(BaseModel):
-    lyrics: Dict[str, str]
-    voice_id: str = "vi-VN-HoaiMyNeural"
-    speed_percent: int = 0
-    pitch_hz: int = 0
+class AutoTuneRequest(BaseModel):
+    vocal_path: str
+    target_key: Optional[str] = "C"
+    scale_type: Optional[str] = "Major"
+    tune_speed: Optional[float] = 0.8
+    voice_effect: Optional[str] = "none"
 
 
-# --- Endpoints ---
+class MultiTrackRenderRequest(BaseModel):
+    tracks: list
+    song_title: Optional[str] = "MultiTrack_Master"
 
+
+class SettingsRequest(BaseModel):
+    gemini_api_key: Optional[str] = None
+    default_voice: Optional[str] = "vi-VN-HoaiMyNeural"
+
+
+# API Endpoints
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "app": "AI Music & Vocal Studio Engine", "version": "1.0.0"}
+    return {"status": "ok", "message": "AI Music & Vocal Studio Backend Running!"}
 
 
 @app.get("/api/voices")
 async def list_voices():
-    return {"voices": get_available_voices()}
-
-
-@app.get("/api/settings")
-async def get_settings():
-    return load_config()
-
-
-@app.post("/api/settings")
-async def update_settings(settings: dict):
-    current = load_config()
-    current.update(settings)
-    save_config(current)
-    return {"status": "success", "settings": current}
+    return {"status": "success", "voices": get_available_voices()}
 
 
 @app.post("/api/analyze-beat")
-async def analyze_beat_file(file: UploadFile = File(...)):
-    """Uploads and analyzes audio file for BPM, key, duration and waveform."""
+async def upload_and_analyze_beat(file: UploadFile = File(...)):
+    """Uploads beat and runs Librosa BPM / Key analysis."""
     try:
         timestamp = int(time.time())
-        filename = f"{timestamp}_{file.filename}"
-        save_path = UPLOADS_DIR / filename
+        clean_filename = f"{timestamp}_{file.filename.replace(' ', '_')}"
+        save_path = UPLOADS_DIR / clean_filename
         
         with open(save_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        analysis = analyze_beat(str(save_path))
-        analysis["url"] = f"/static/uploads/{filename}"
-        analysis["server_filepath"] = str(save_path)
-        return {"status": "success", "data": analysis}
+        analysis_data = analyze_beat(str(save_path))
+        analysis_data["filename"] = file.filename
+        analysis_data["server_filepath"] = str(save_path)
+        analysis_data["url"] = f"/static/uploads/{clean_filename}"
+        
+        return {"status": "success", "data": analysis_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích beat: {str(e)}")
 
 
-@app.post("/api/optimize-lyrics")
-async def optimize_lyrics_endpoint(req: LyricsRequest):
-    """Uses Gemini 1.5 Flash to generate or optimize lyrics according to BPM and musical style."""
-    config = load_config()
-    api_key = req.gemini_api_key or config.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY", "")
-    
+@app.post("/api/extract-video-audio")
+async def extract_video_audio(file: UploadFile = File(...)):
+    """Extracts audio track from video file and analyzes beat/BPM."""
     try:
-        result = generate_lyrics_ai(
+        timestamp = int(time.time())
+        clean_video_name = f"video_{timestamp}_{file.filename.replace(' ', '_')}"
+        video_path = TEMP_DIR / clean_video_name
+        
+        with open(video_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        audio_filename = f"extracted_{timestamp}.mp3"
+        audio_path = UPLOADS_DIR / audio_filename
+        
+        extract_audio_from_video(str(video_path), str(audio_path))
+        
+        # Analyze the extracted audio track
+        analysis_data = analyze_beat(str(audio_path))
+        analysis_data["filename"] = f"Audio from {file.filename}"
+        analysis_data["server_filepath"] = str(audio_path)
+        analysis_data["url"] = f"/static/uploads/{audio_filename}"
+        
+        return {"status": "success", "data": analysis_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi trích xuất âm thanh từ video: {str(e)}")
+
+
+@app.post("/api/save-recording")
+async def save_mic_recording(file: UploadFile = File(...)):
+    """Saves live mic recording from frontend."""
+    try:
+        timestamp = int(time.time())
+        vocal_filename = f"rec_{timestamp}.wav"
+        vocal_path = VOCALS_DIR / vocal_filename
+        
+        with open(vocal_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {
+            "status": "success",
+            "message": "Đã lưu bản thu âm thành công!",
+            "vocal_url": f"/static/vocals/{vocal_filename}",
+            "vocal_path": str(vocal_path)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi lưu file thu âm: {str(e)}")
+
+
+@app.post("/api/apply-autotune-fx")
+async def apply_autotune_and_fx(req: AutoTuneRequest):
+    """Applies musical scale Auto-Tune and voice transformations."""
+    try:
+        vocal_path_obj = Path(req.vocal_path)
+        if not vocal_path_obj.is_absolute():
+            vocal_path_obj = BASE_DIR / req.vocal_path
+            
+        if not vocal_path_obj.exists():
+            raise HTTPException(status_code=404, detail="File Vocal không tồn tại.")
+            
+        timestamp = int(time.time())
+        tuned_filename = f"tuned_{timestamp}.wav"
+        tuned_path = VOCALS_DIR / tuned_filename
+        
+        # 1. Apply Auto-Tune
+        auto_tune_vocal(
+            vocal_path=str(vocal_path_obj),
+            target_key=req.target_key or "C",
+            scale_type=req.scale_type or "Major",
+            tune_speed=req.tune_speed or 0.8,
+            output_path=str(tuned_path)
+        )
+        
+        # 2. Apply Voice FX Preset if requested
+        if req.voice_effect and req.voice_effect != "none":
+            fx_filename = f"fx_{req.voice_effect}_{timestamp}.wav"
+            fx_path = VOCALS_DIR / fx_filename
+            apply_voice_effect_preset(str(tuned_path), req.voice_effect, str(fx_path))
+            tuned_path = fx_path
+            tuned_filename = fx_filename
+            
+        return {
+            "status": "success",
+            "vocal_url": f"/static/vocals/{tuned_filename}",
+            "vocal_path": str(tuned_path)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý Auto-Tune: {str(e)}")
+
+
+@app.post("/api/render-multitrack")
+async def render_multitrack(req: MultiTrackRenderRequest):
+    """Renders multiple tracks from the interactive timeline into 1 master audio file."""
+    try:
+        timestamp = int(time.time())
+        safe_title = "".join(c for c in (req.song_title or "MultiTrack_Master") if c.isalnum() or c in (' ', '_', '-')).rstrip()
+        safe_title = safe_title.replace(" ", "_")
+        
+        master_filename = f"{safe_title}_{timestamp}.mp3"
+        master_output_path = OUTPUTS_DIR / master_filename
+        
+        # Resolve track filepaths
+        resolved_tracks = []
+        for t in req.tracks:
+            raw_path = t.get("filepath", "")
+            p_obj = Path(raw_path)
+            if not p_obj.is_absolute():
+                p_obj = BASE_DIR / raw_path
+            if p_obj.exists():
+                t_copy = dict(t)
+                t_copy["filepath"] = str(p_obj)
+                resolved_tracks.append(t_copy)
+                
+        render_multitrack_timeline(resolved_tracks, str(master_output_path))
+        
+        return {
+            "status": "success",
+            "message": "Ghép & Render Timeline hoàn tất!",
+            "master_url": f"/static/outputs/{master_filename}",
+            "master_filepath": str(master_output_path),
+            "filename": master_filename
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi Render Timeline: {str(e)}")
+
+
+@app.post("/api/optimize-lyrics")
+async def optimize_lyrics(req: OptimizeLyricsRequest):
+    try:
+        lyrics_data = await generate_lyrics_ai(
             prompt_idea=req.prompt_idea,
             genre=req.genre,
             bpm=req.bpm,
             key=req.key,
             mood=req.mood,
-            voice_style=req.voice_style,
-            api_key=api_key
+            api_key=req.api_key
         )
-        return {"status": "success", "data": result}
+        return {"status": "success", "data": lyrics_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo lời AI: {str(e)}")
 
 
 @app.post("/api/smart-paste")
 async def smart_paste_endpoint(req: SmartPasteRequest):
-    """Parses raw text or JSON from clipboard into structured song schema."""
     try:
         parsed = parse_smart_paste(req.clipboard_text)
         return {"status": "success", "data": parsed}
@@ -183,40 +297,8 @@ async def smart_paste_endpoint(req: SmartPasteRequest):
         raise HTTPException(status_code=400, detail=f"Không thể phân tích dữ liệu: {str(e)}")
 
 
-@app.post("/api/generate-vocals-only")
-async def generate_vocals_only(req: VocalOnlyRequest):
-    """Generates vocal track only."""
-    try:
-        timestamp = int(time.time())
-        vocal_filename = f"vocal_{timestamp}.wav"
-        vocal_path = VOCALS_DIR / vocal_filename
-        
-        await generate_vocal_track(
-            lyrics_sections=req.lyrics,
-            voice_id=req.voice_id,
-            speed_percent=req.speed_percent,
-            pitch_hz=req.pitch_hz,
-            output_vocal_path=str(vocal_path),
-            temp_dir=str(TEMP_DIR)
-        )
-        
-        return {
-            "status": "success",
-            "vocal_url": f"/static/vocals/{vocal_filename}",
-            "vocal_path": str(vocal_path)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi tạo giọng hát: {str(e)}")
-
-
 @app.post("/api/mix-song")
 async def mix_full_song(req: MixSongRequest):
-    """
-    1-Click Master Workflow:
-    1. Generates neural vocals with rhythm spacing in parallel.
-    2. Applies studio DSP effects (EQ, Reverb, Compressor, Delay).
-    3. Mixes vocals over beat and exports master MP3.
-    """
     try:
         beat_path_obj = Path(req.beat_path)
         if not beat_path_obj.is_absolute():
@@ -230,7 +312,6 @@ async def mix_full_song(req: MixSongRequest):
         safe_title = "".join(c for c in (req.song_title or "AI_Master_Song") if c.isalnum() or c in (' ', '_', '-')).rstrip()
         safe_title = safe_title.replace(" ", "_")
         
-        # 1. Generate vocal track in parallel
         vocal_filename = f"vocal_{timestamp}.wav"
         vocal_path = VOCALS_DIR / vocal_filename
         
@@ -243,7 +324,6 @@ async def mix_full_song(req: MixSongRequest):
             temp_dir=str(TEMP_DIR)
         )
         
-        # 2. Mix Beat and Vocal
         master_mp3_filename = f"{safe_title}_{timestamp}.mp3"
         master_output_path = OUTPUTS_DIR / master_mp3_filename
         
@@ -266,6 +346,28 @@ async def mix_full_song(req: MixSongRequest):
         raise HTTPException(status_code=500, detail=f"Lỗi trong quá trình mix nhạc: {str(e)}")
 
 
+@app.get("/api/settings")
+async def get_settings():
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"gemini_api_key": "", "default_voice": "vi-VN-HoaiMyNeural"}
+
+
+@app.post("/api/settings")
+async def save_settings(req: SettingsRequest):
+    data = {
+        "gemini_api_key": req.gemini_api_key or "",
+        "default_voice": req.default_voice or "vi-VN-HoaiMyNeural"
+    }
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    return {"status": "success", "message": "Đã lưu cài đặt!"}
+
+
 @app.get("/api/download/{filename}")
 async def download_file(filename: str):
     file_path = OUTPUTS_DIR / filename
@@ -276,4 +378,4 @@ async def download_file(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8888)
+    uvicorn.run("main:app", host="127.0.0.1", port=8888, reload=True)

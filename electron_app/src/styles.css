@@ -1341,3 +1341,425 @@ audio {
   display: flex;
   gap: 8px;
 }
+
+/* =========================================================================
+   TAB 4: STUDIO VOICE RECORDER & AUTO-TUNE STYLES
+   ========================================================================= */
+
+.recorder-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.recorder-visualizer-box {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+#recorderWaveCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.rec-timer-overlay {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ff3366;
+  text-shadow: 0 0 10px rgba(255, 51, 102, 0.8);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.recorder-controls-row {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.btn-record-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  border: 2px solid #fda4af;
+  color: #ffffff;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 0 25px rgba(225, 29, 72, 0.4);
+  transition: all 0.25s ease;
+}
+
+.btn-record-main:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 35px rgba(225, 29, 72, 0.7);
+}
+
+.btn-record-main.recording {
+  background: linear-gradient(135deg, #475569, #1e293b);
+  border-color: #94a3b8;
+  animation: pulseRecording 1.2s infinite;
+}
+
+@keyframes pulseRecording {
+  0% { box-shadow: 0 0 10px rgba(225, 29, 72, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(225, 29, 72, 0.9); }
+  100% { box-shadow: 0 0 10px rgba(225, 29, 72, 0.5); }
+}
+
+.record-dot {
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+.btn-record-main.recording .record-dot {
+  background: #ef4444;
+}
+
+.live-rec-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.live-rec-badge.live {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  animation: blinkLive 1s infinite;
+}
+
+@keyframes blinkLive {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.recorder-options-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+}
+
+.custom-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.custom-checkbox-label input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 16px;
+  height: 16px;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* =========================================================================
+   TAB 5: MULTI-TRACK TIMELINE SEQUENCER STYLES
+   ========================================================================= */
+
+.timeline-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(13, 15, 23, 0.85);
+}
+
+.timeline-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+}
+
+.timeline-transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid var(--cyan);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-transport:hover {
+  background: var(--cyan);
+  color: #000;
+}
+
+.btn-transport-stop {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
+.btn-transport-stop:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.timeline-time-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cyan);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+}
+
+.timeline-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline-scroll-container {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  overflow-x: auto;
+  position: relative;
+  min-height: 280px;
+}
+
+.timeline-ruler {
+  position: relative;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-glass);
+  margin-left: 240px; /* Aligns with track header width */
+}
+
+.ruler-marker {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.timeline-playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: -300px;
+  left: 0%;
+  width: 2px;
+  background: #ff0055;
+  box-shadow: 0 0 8px #ff0055;
+  z-index: 20;
+  pointer-events: none;
+  transition: left 0.05s linear;
+}
+
+.timeline-tracks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.track-row {
+  display: flex;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.track-header {
+  width: 240px;
+  min-width: 240px;
+  background: rgba(20, 24, 38, 0.9);
+  border-right: 1px solid var(--border-glass);
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.track-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-mini-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vol-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.track-vol-slider {
+  width: 80px;
+  height: 4px;
+}
+
+.btn-mute {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.btn-mute.active {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.track-lane {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 49px,
+    rgba(255, 255, 255, 0.02) 50px
+  );
+  overflow: hidden;
+}
+
+.sound-block {
+  position: absolute;
+  top: 8px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.2s ease, filter 0.2s ease;
+  z-index: 10;
+}
+
+.sound-block:active {
+  cursor: grabbing;
+  filter: brightness(1.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  z-index: 15;
+}
+
+.sound-block-drag-handle {
+  font-size: 1rem;
+  opacity: 0.6;
+}
+
+.sound-block-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.block-cyan {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.45) 0%, rgba(79, 70, 229, 0.45) 100%);
+  border: 1px solid var(--cyan);
+  color: #ffffff;
+}
+
+.block-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.45) 0%, rgba(217, 119, 6, 0.45) 100%);
+  border: 1px solid var(--amber);
+  color: #ffffff;
+}
+
+.block-pink {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.45) 0%, rgba(190, 24, 93, 0.45) 100%);
+  border: 1px solid var(--pink);
+  color: #ffffff;
+}
+
+.block-violet {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.45) 0%, rgba(124, 58, 237, 0.45) 100%);
+  border: 1px solid var(--violet);
+  color: #ffffff;
+}
+
+.timeline-hint-box {
+  background: rgba(0, 242, 254, 0.06);
+  border: 1px dashed rgba(0, 242, 254, 0.3);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.timeline-master-result-card {
+  padding: 16px;
+  background: rgba(18, 22, 34, 0.9);
+  border: 1px solid var(--border-glass-bright);
+}
+

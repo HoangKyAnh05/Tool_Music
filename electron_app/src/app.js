@@ -44,6 +44,32 @@ const state = {
     compressor: true,
     eq_preset: "warm_vocal"
   },
+  recording: {
+    mediaRecorder: null,
+    audioChunks: [],
+    rawBlob: null,
+    rawVocalPath: null,
+    tunedVocalPath: null,
+    isRecording: false,
+    timerInterval: null,
+    secondsElapsed: 0,
+    audioContext: null,
+    analyser: null,
+    animFrameId: null
+  },
+  timeline: {
+    totalDurationSec: 50.0,
+    isPlaying: false,
+    playheadSec: 0,
+    playInterval: null,
+    audioNodes: {},
+    tracks: [
+      { id: "track_1", name: "Beat Lofi 90 BPM", filepath: "data/uploads/demo_beat_lofi_90bpm.wav", start_time_sec: 0.0, volume: 1.0, pan: 0.0, muted: false, duration_sec: 32.0 },
+      { id: "track_2", name: "Sound FX Drop", filepath: "", start_time_sec: 12.0, volume: 0.9, pan: 0.0, muted: false, duration_sec: 8.0 },
+      { id: "track_3", name: "Vocal Thu Âm (Micro)", filepath: "", start_time_sec: 4.0, volume: 1.2, pan: 0.0, muted: false, duration_sec: 15.0 },
+      { id: "track_4", name: "Giọng Hát AI (Neural)", filepath: "", start_time_sec: 8.0, volume: 1.15, pan: 0.0, muted: false, duration_sec: 20.0 }
+    ]
+  },
   audioPlayer: new Audio(),
   masterAudioUrl: null
 };
@@ -52,6 +78,10 @@ const state = {
 const navTabs = document.querySelectorAll(".nav-tab");
 const tabContents = document.querySelectorAll(".tab-content");
 const toastContainer = document.getElementById("toastContainer");
+
+// Video File Input
+const videoFileInput = document.getElementById("videoFileInput");
+const btnSelectVideo = document.getElementById("btnSelectVideo");
 
 // Beat Tab Elements
 const dropZone = document.getElementById("dropZone");
@@ -132,6 +162,10 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCopyPrompt();
   setupDemoSampleLoaders();
   setupBeatUpload();
+  setupVideoExtraction();
+  setupStudioRecorder();
+  setupAutoTuneControls();
+  setupMultiTrackTimeline();
   setupAudioPlayer();
   setupLyricsActions();
   setupSmartPasteModal();
@@ -956,4 +990,567 @@ function setupDemoSampleLoaders() {
       showToast("⚡ Đã nạp TRỌN BỘ MẪU! Hãy bấm 'TẠO BÀI HÁT & MIX NHẠC' bên dưới để nghe thử ngay!", "success");
     });
   }
+}
+
+// =========================================================================
+// 1. VIDEO AUDIO EXTRACTOR
+// =========================================================================
+function setupVideoExtraction() {
+  if (!btnSelectVideo || !videoFileInput) return;
+
+  btnSelectVideo.addEventListener("click", (e) => {
+    e.stopPropagation();
+    videoFileInput.click();
+  });
+
+  videoFileInput.addEventListener("change", async (e) => {
+    if (e.target.files.length === 0) return;
+    const videoFile = e.target.files[0];
+
+    showToast(`🎬 Đang trích xuất luồng âm thanh từ video '${videoFile.name}'...`, "info");
+    beatStatusBadge.innerText = "Đang tách âm từ video...";
+    beatStatusBadge.className = "badge badge-warning";
+
+    const formData = new FormData();
+    formData.append("file", videoFile);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/extract-video-audio`, {
+        method: "POST",
+        body: formData
+      });
+
+      const json = await res.json();
+      if (json.status === "success") {
+        const d = json.data;
+        state.beat.serverPath = d.server_filepath;
+        state.beat.url = `${API_BASE}${d.url}`;
+        state.beat.bpm = d.bpm;
+        state.beat.key = d.key;
+        state.beat.duration = d.duration;
+        state.beat.waveform = d.waveform;
+
+        // Update Timeline Track 1 with this extracted audio
+        state.timeline.tracks[0].filepath = d.server_filepath;
+        state.timeline.tracks[0].name = `Video Audio: ${videoFile.name}`;
+        const t1Title = document.getElementById("blockTrack1Title");
+        if (t1Title) t1Title.innerText = `Audio từ Video (00:00.0s)`;
+
+        // Update metrics
+        metricBpm.innerText = d.bpm.toFixed(1);
+        metricKey.innerText = d.key;
+        metricDuration.innerText = formatSeconds(d.duration);
+        metricFilename.innerText = d.filename;
+        beatStatusBadge.innerText = "Đã trích xuất âm thanh từ Video thành công!";
+        beatStatusBadge.className = "badge badge-success";
+
+        // Sync to lyrics & autotune
+        lyricsBpmInput.value = Math.round(d.bpm);
+        lyricsKeyInput.value = d.key;
+
+        // Auto-select key for Auto-Tune
+        syncKeyToAutoTune(d.key);
+
+        state.audioPlayer.src = state.beat.url;
+        btnPlayPauseBeat.disabled = false;
+        beatSeekSlider.disabled = false;
+
+        drawWaveform(d.waveform);
+        showToast("✅ Đã tách âm thanh từ video và phân tích Beat BPM thành công!", "success");
+      } else {
+        throw new Error(json.detail || "Lỗi tách video");
+      }
+    } catch (err) {
+      beatStatusBadge.innerText = "Lỗi tách video";
+      beatStatusBadge.className = "badge badge-error";
+      showToast(`Lỗi: ${err.message}`, "error");
+    }
+  });
+}
+
+function syncKeyToAutoTune(fullKey) {
+  const autoTuneKeySelect = document.getElementById("autoTuneKeySelect");
+  const autoTuneScaleSelect = document.getElementById("autoTuneScaleSelect");
+  if (!autoTuneKeySelect || !autoTuneScaleSelect) return;
+
+  const parts = fullKey.split(" ");
+  if (parts.length >= 1) {
+    const keyLetter = parts[0];
+    const scale = parts[1] || "Major";
+    autoTuneKeySelect.value = keyLetter;
+    autoTuneScaleSelect.value = scale;
+  }
+}
+
+// =========================================================================
+// 2. STUDIO VOICE RECORDER (MICROPHONE & REAL-TIME VISUALIZER)
+// =========================================================================
+function setupStudioRecorder() {
+  const btnToggleRecord = document.getElementById("btnToggleRecord");
+  const recordBtnLabel = document.getElementById("recordBtnLabel");
+  const liveRecBadge = document.getElementById("liveRecBadge");
+  const recTimerText = document.getElementById("recTimerText");
+  const chkCountIn = document.getElementById("chkCountIn");
+  const chkPlayBeat = document.getElementById("chkPlayBeatWhileRecording");
+  const rawRecordPlayer = document.getElementById("rawRecordAudioPlayer");
+  const canvas = document.getElementById("recorderWaveCanvas");
+  if (!btnToggleRecord || !canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  // Idle visualizer wave
+  function drawIdleWave() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(0, 242, 254, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const midY = canvas.height / 2;
+    for (let x = 0; x < canvas.width; x += 4) {
+      const y = midY + Math.sin(x * 0.05 + Date.now() * 0.003) * 6;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    if (!state.recording.isRecording) {
+      state.recording.animFrameId = requestAnimationFrame(drawIdleWave);
+    }
+  }
+  drawIdleWave();
+
+  btnToggleRecord.addEventListener("click", async () => {
+    if (state.recording.isRecording) {
+      stopRecording();
+    } else {
+      if (chkCountIn.checked) {
+        showToast("⏱️ Chuẩn bị thu âm: 3...", "info");
+        recordBtnLabel.innerText = "⏳ 3...";
+        setTimeout(() => {
+          recordBtnLabel.innerText = "⏳ 2...";
+          setTimeout(() => {
+            recordBtnLabel.innerText = "⏳ 1...";
+            setTimeout(() => {
+              startRecording();
+            }, 800);
+          }, 800);
+        }, 800);
+      } else {
+        startRecording();
+      }
+    }
+  });
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      state.recording.audioChunks = [];
+      state.recording.mediaRecorder = new MediaRecorder(stream);
+
+      // AudioContext Analyzer
+      state.recording.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = state.recording.audioContext.createMediaStreamSource(stream);
+      state.recording.analyser = state.recording.audioContext.createAnalyser();
+      state.recording.analyser.fftSize = 256;
+      source.connect(state.recording.analyser);
+
+      state.recording.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) state.recording.audioChunks.push(e.data);
+      };
+
+      state.recording.mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(state.recording.audioChunks, { type: "audio/wav" });
+        state.recording.rawBlob = audioBlob;
+        const audioUrl = URL.createObjectURL(audioBlob);
+        rawRecordPlayer.src = audioUrl;
+
+        // Upload to backend
+        uploadRecordingToBackend(audioBlob);
+
+        // Stop media stream tracks
+        stream.getTracks().forEach((track) => track.stop());
+        if (state.recording.audioContext) state.recording.audioContext.close();
+      };
+
+      state.recording.mediaRecorder.start(100);
+      state.recording.isRecording = true;
+      state.recording.secondsElapsed = 0;
+
+      // Update UI
+      btnToggleRecord.classList.add("recording");
+      recordBtnLabel.innerText = "⏹ DỪNG THU ÂM";
+      liveRecBadge.innerText = "🔴 Đang thu âm...";
+      liveRecBadge.className = "live-rec-badge live";
+
+      // Optional: Play beat simultaneously
+      if (chkPlayBeat.checked && state.audioPlayer.src) {
+        state.audioPlayer.currentTime = 0;
+        state.audioPlayer.play();
+      }
+
+      // Timer
+      state.recording.timerInterval = setInterval(() => {
+        state.recording.secondsElapsed++;
+        recTimerText.innerText = formatSeconds(state.recording.secondsElapsed);
+      }, 1000);
+
+      // Live waveform visualizer
+      drawLiveVisualizer();
+      showToast("🎙️ Đang thu âm... Hãy hát vào micro!", "info");
+    } catch (err) {
+      showToast("Không thể truy cập Microphone: " + err.message, "error");
+    }
+  }
+
+  function stopRecording() {
+    if (state.recording.mediaRecorder && state.recording.mediaRecorder.state !== "inactive") {
+      state.recording.mediaRecorder.stop();
+    }
+    state.recording.isRecording = false;
+    clearInterval(state.recording.timerInterval);
+
+    // Stop beat playback if playing
+    if (chkPlayBeat.checked && !state.audioPlayer.paused) {
+      state.audioPlayer.pause();
+    }
+
+    btnToggleRecord.classList.remove("recording");
+    recordBtnLabel.innerText = "🔴 BẮT ĐẦU THU ÂM";
+    liveRecBadge.innerText = "✅ Thu âm hoàn tất";
+    liveRecBadge.className = "live-rec-badge";
+
+    drawIdleWave();
+  }
+
+  function drawLiveVisualizer() {
+    if (!state.recording.isRecording || !state.recording.analyser) return;
+
+    const bufferLength = state.recording.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    state.recording.analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = (dataArray[i] / 255) * canvas.height;
+      const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      gradient.addColorStop(0, "#00f2fe");
+      gradient.addColorStop(1, "#ff007f");
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      x += barWidth + 1;
+    }
+
+    requestAnimationFrame(drawLiveVisualizer);
+  }
+
+  async function uploadRecordingToBackend(blob) {
+    showToast("Đang lưu bản thu âm vào Studio...", "info");
+    const formData = new FormData();
+    formData.append("file", blob, "my_mic_recording.wav");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/save-recording`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        state.recording.rawVocalPath = data.vocal_path;
+        state.recording.tunedVocalPath = data.vocal_path; // Default to raw until tuned
+        showToast("✅ Đã lưu bản thu âm! Bạn có thể áp dụng Auto-Tune hoặc đẩy vào Timeline.", "success");
+      }
+    } catch (e) {
+      showToast("Lỗi lưu file thu âm lên server", "error");
+    }
+  }
+}
+
+// =========================================================================
+// 3. AUTO-TUNE & VOICE EFFECTS CONTROLS
+// =========================================================================
+function setupAutoTuneControls() {
+  const autoTuneKeySelect = document.getElementById("autoTuneKeySelect");
+  const autoTuneScaleSelect = document.getElementById("autoTuneScaleSelect");
+  const autoTuneSpeedSlider = document.getElementById("autoTuneSpeedSlider");
+  const valAutoTuneSpeed = document.getElementById("valAutoTuneSpeed");
+  const voiceEffectSelect = document.getElementById("voiceEffectSelect");
+  const btnApplyAutoTune = document.getElementById("btnApplyAutoTune");
+  const tunedRecordPlayer = document.getElementById("tunedRecordAudioPlayer");
+  const btnPushRecToTimeline = document.getElementById("btnPushRecToTimeline");
+
+  if (!btnApplyAutoTune) return;
+
+  autoTuneSpeedSlider.addEventListener("input", (e) => {
+    const val = parseInt(e.target.value);
+    if (val < 30) valAutoTuneSpeed.innerText = `${val}% (Tự nhiên / Mộc)`;
+    else if (val < 70) valAutoTuneSpeed.innerText = `${val}% (Chỉnh nhẹ Studio)`;
+    else valAutoTuneSpeed.innerText = `${val}% (Trap / Hard Tune)`;
+  });
+
+  btnApplyAutoTune.addEventListener("click", async () => {
+    const vocalPath = state.recording.rawVocalPath;
+    if (!vocalPath) {
+      showToast("⚠️ Hãy thu âm một đoạn giọng hát ở Bước 4 trước khi chỉnh Auto-Tune!", "warning");
+      return;
+    }
+
+    const key = autoTuneKeySelect.value;
+    const scale = autoTuneScaleSelect.value;
+    const speed = parseFloat(autoTuneSpeedSlider.value) / 100.0;
+    const fx = voiceEffectSelect.value;
+
+    showToast("🪄 Đang xử lý Auto-Tune và áp dụng bộ hiệu ứng giọng...", "info");
+    btnApplyAutoTune.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/apply-autotune-fx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vocal_path: vocalPath,
+          target_key: key,
+          scale_type: scale,
+          tune_speed: speed,
+          voice_effect: fx
+        })
+      });
+
+      const data = await res.json();
+      if (data.status === "success") {
+        state.recording.tunedVocalPath = data.vocal_path;
+        tunedRecordPlayer.src = `${API_BASE}${data.vocal_url}`;
+        tunedRecordPlayer.load();
+        tunedRecordPlayer.play();
+        showToast("✅ Đã áp dụng Auto-Tune thành công! Đang phát thử giọng hát.", "success");
+      } else {
+        throw new Error(data.detail || "Lỗi xử lý Auto-Tune");
+      }
+    } catch (e) {
+      showToast(`Lỗi: ${e.message}`, "error");
+    } finally {
+      btnApplyAutoTune.disabled = false;
+    }
+  });
+
+  btnPushRecToTimeline.addEventListener("click", () => {
+    const vocalPathToUse = state.recording.tunedVocalPath || state.recording.rawVocalPath;
+    if (!vocalPathToUse) {
+      showToast("⚠️ Chưa có bản thu âm nào để đưa vào Timeline!", "warning");
+      return;
+    }
+
+    // Set Track 3 in Timeline
+    state.timeline.tracks[2].filepath = vocalPathToUse;
+    state.timeline.tracks[2].name = "Vocal Thu Âm (Auto-Tuned)";
+    const t3Title = document.getElementById("blockTrack3Title");
+    if (t3Title) t3Title.innerText = `Vocal Thu Âm (${formatSeconds(state.timeline.tracks[2].start_time_sec)}s)`;
+
+    switchTab("tab-timeline");
+    showToast("✅ Đã đẩy bản thu âm vào Track 3 của Multi-Track Timeline!", "success");
+  });
+}
+
+// =========================================================================
+// 4. MULTI-TRACK TIMELINE SEQUENCER (DRAG & DROP POSITIONING & RENDER)
+// =========================================================================
+function setupMultiTrackTimeline() {
+  const btnPlayPauseTimeline = document.getElementById("btnPlayPauseTimeline");
+  const btnStopTimeline = document.getElementById("btnStopTimeline");
+  const timelinePlayIcon = document.getElementById("timelinePlayIcon");
+  const timelinePlayText = document.getElementById("timelinePlayText");
+  const timelineCurrentTime = document.getElementById("timelineCurrentTime");
+  const timelinePlayhead = document.getElementById("timelinePlayhead");
+  const btnAddAudio = document.getElementById("btnAddAudioFileToTimeline");
+  const timelineAudioFileInput = document.getElementById("timelineAudioFileInput");
+  const btnRenderMaster = document.getElementById("btnRenderTimelineMaster");
+  const resultCard = document.getElementById("timelineMasterResultCard");
+  const masterPlayer = document.getElementById("timelineMasterAudioPlayer");
+  const btnDownload = document.getElementById("btnDownloadTimelineMaster");
+
+  if (!btnPlayPauseTimeline) return;
+
+  // Make Sound Blocks Draggable along Timeline Lanes
+  const blocks = document.querySelectorAll(".sound-block");
+  blocks.forEach((block) => {
+    let isDragging = false;
+    let startX = 0;
+    let initialLeftPercent = 0;
+
+    block.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      const styleLeft = block.style.left || "0%";
+      initialLeftPercent = parseFloat(styleLeft) || 0;
+      e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const parentLane = block.parentElement;
+      if (!parentLane) return;
+
+      const laneWidth = parentLane.getBoundingClientRect().width;
+      const deltaX = e.clientX - startX;
+      const deltaPercent = (deltaX / laneWidth) * 100;
+
+      let newLeft = Math.max(0, Math.min(85, initialLeftPercent + deltaPercent));
+      block.style.left = `${newLeft.toFixed(1)}%`;
+
+      // Update start_time_sec in state
+      const trackRow = block.closest(".track-row");
+      if (trackRow) {
+        const trackId = trackRow.getAttribute("data-track-id");
+        const trackObj = state.timeline.tracks.find((t) => t.id === trackId);
+        if (trackObj) {
+          const startSec = (newLeft / 100.0) * state.timeline.totalDurationSec;
+          trackObj.start_time_sec = parseFloat(startSec.toFixed(2));
+
+          const titleEl = block.querySelector(".sound-block-title");
+          if (titleEl) {
+            titleEl.innerText = `${trackObj.name} (${formatSeconds(startSec)}s)`;
+          }
+        }
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      isDragging = false;
+    });
+  });
+
+  // Track Volume & Mute Controls
+  document.querySelectorAll(".track-row").forEach((row) => {
+    const trackId = row.getAttribute("data-track-id");
+    const trackObj = state.timeline.tracks.find((t) => t.id === trackId);
+    if (!trackObj) return;
+
+    const volSlider = row.querySelector(".track-vol-slider");
+    if (volSlider) {
+      volSlider.addEventListener("input", (e) => {
+        trackObj.volume = parseFloat(e.target.value);
+      });
+    }
+
+    const btnMute = row.querySelector(".btn-mute");
+    if (btnMute) {
+      btnMute.addEventListener("click", () => {
+        trackObj.muted = !trackObj.muted;
+        btnMute.classList.toggle("active", trackObj.muted);
+      });
+    }
+  });
+
+  // Transport: Play Timeline in sync
+  btnPlayPauseTimeline.addEventListener("click", () => {
+    if (state.timeline.isPlaying) {
+      pauseTimeline();
+    } else {
+      playTimeline();
+    }
+  });
+
+  btnStopTimeline.addEventListener("click", () => {
+    stopTimeline();
+  });
+
+  function playTimeline() {
+    state.timeline.isPlaying = true;
+    timelinePlayIcon.innerText = "⏸";
+    timelinePlayText.innerText = "Tạm dừng";
+
+    state.timeline.playInterval = setInterval(() => {
+      state.timeline.playheadSec += 0.2;
+      if (state.timeline.playheadSec >= state.timeline.totalDurationSec) {
+        stopTimeline();
+        return;
+      }
+      timelineCurrentTime.innerText = formatSeconds(state.timeline.playheadSec);
+      const percent = (state.timeline.playheadSec / state.timeline.totalDurationSec) * 100;
+      timelinePlayhead.style.left = `${percent}%`;
+    }, 200);
+  }
+
+  function pauseTimeline() {
+    state.timeline.isPlaying = false;
+    timelinePlayIcon.innerText = "▶";
+    timelinePlayText.innerText = "Phát Timeline";
+    clearInterval(state.timeline.playInterval);
+  }
+
+  function stopTimeline() {
+    pauseTimeline();
+    state.timeline.playheadSec = 0;
+    timelineCurrentTime.innerText = "00:00.0";
+    timelinePlayhead.style.left = "0%";
+  }
+
+  // Add Audio File to Timeline
+  if (btnAddAudio && timelineAudioFileInput) {
+    btnAddAudio.addEventListener("click", () => timelineAudioFileInput.click());
+    timelineAudioFileInput.addEventListener("change", async (e) => {
+      if (e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      showToast(`Đang nạp '${file.name}' vào Track 2...`, "info");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/analyze-beat`, {
+          method: "POST",
+          body: formData
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          state.timeline.tracks[1].filepath = json.data.server_filepath;
+          state.timeline.tracks[1].name = file.name;
+          const t2Title = document.getElementById("blockTrack2Title");
+          if (t2Title) t2Title.innerText = `${file.name} (00:12.0s)`;
+          showToast(`✅ Đã thêm '${file.name}' vào Track 2!`, "success");
+        }
+      } catch (err) {
+        showToast("Lỗi tải file âm thanh", "error");
+      }
+    });
+  }
+
+  // 1-Click Render Multi-Track Master
+  btnRenderMaster.addEventListener("click", async () => {
+    // Ensure track 1 has the current beat
+    if (state.beat.serverPath) {
+      state.timeline.tracks[0].filepath = state.beat.serverPath;
+    }
+
+    showToast("🔥 Đang ghép & render toàn bộ các Track trên Timeline...", "info");
+    btnRenderMaster.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/render-multitrack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tracks: state.timeline.tracks,
+          song_title: state.lyrics.title || "MultiTrack_Master"
+        })
+      });
+
+      const data = await res.json();
+      if (data.status === "success") {
+        const fullUrl = `${API_BASE}${data.master_url}`;
+        masterPlayer.src = fullUrl;
+        btnDownload.href = `${API_BASE}/api/download/${data.filename}`;
+        resultCard.style.display = "block";
+        masterPlayer.play();
+        showToast("🎉 Ghép & Xuất Master Timeline hoàn tất! Đang phát thử bản master.", "success");
+      } else {
+        throw new Error(data.detail || "Lỗi render");
+      }
+    } catch (e) {
+      showToast(`Lỗi: ${e.message}`, "error");
+    } finally {
+      btnRenderMaster.disabled = false;
+    }
+  });
 }

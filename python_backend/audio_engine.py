@@ -314,3 +314,249 @@ def mix_beat_and_vocals(beat_path: str, vocal_path: str, output_path: str, mix_s
                 
     return output_path
 
+
+# --- Multi-Track Timeline Sequencer ---
+
+def render_multitrack_timeline(tracks: list, output_path: str, master_sr: int = 44100) -> str:
+    """
+    Renders multiple audio tracks positioned on an interactive timeline into a single master audio track.
+    Each track has: filepath, start_time_sec, volume, muted, pan (-1.0 to 1.0).
+    """
+    if not tracks:
+        # Create 2 seconds silence
+        silence = np.zeros((2, master_sr * 2), dtype=np.float32)
+        with AudioFile(output_path, 'w', master_sr, 2) as f:
+            f.write(silence)
+        return output_path
+
+    # First pass: Determine maximum length
+    max_duration_sec = 1.0
+    valid_track_data = []
+
+    for t_info in tracks:
+        fpath = t_info.get("filepath", "")
+        if not fpath or not os.path.exists(fpath):
+            continue
+            
+        is_muted = t_info.get("muted", False)
+        if is_muted:
+            continue
+            
+        start_sec = max(0.0, float(t_info.get("start_time_sec", 0.0)))
+        vol = max(0.0, float(t_info.get("volume", 1.0)))
+        pan = max(-1.0, min(1.0, float(t_info.get("pan", 0.0))))
+
+        try:
+            with AudioFile(fpath) as f:
+                data = f.read(f.frames)
+                sr = f.samplerate
+                num_ch = f.num_channels
+                
+            # Resample if needed
+            if sr != master_sr:
+                data = librosa.resample(data, orig_sr=sr, target_sr=master_sr)
+                
+            # Convert to stereo
+            if data.shape[0] == 1:
+                data = np.repeat(data, 2, axis=0)
+            elif data.shape[0] > 2:
+                data = data[:2, :]
+                
+            # Apply volume
+            data = data * vol
+            
+            # Apply stereo pan
+            left_gain = math.cos((pan + 1.0) * math.pi / 4.0)
+            right_gain = math.sin((pan + 1.0) * math.pi / 4.0)
+            data[0, :] *= left_gain
+            data[1, :] *= right_gain
+
+            track_dur_sec = start_sec + (data.shape[1] / master_sr)
+            if track_dur_sec > max_duration_sec:
+                max_duration_sec = track_dur_sec
+                
+            valid_track_data.append({
+                "start_sec": start_sec,
+                "data": data
+            })
+        except Exception as e:
+            print(f"Error reading track {fpath}: {e}")
+
+    # Allocate master buffer
+    total_samples = int(max_duration_sec * master_sr) + master_sr
+    master_buffer = np.zeros((2, total_samples), dtype=np.float32)
+
+    # Place tracks at their start_sec
+    for item in valid_track_data:
+        data = item["data"]
+        start_sample = int(item["start_sec"] * master_sr)
+        end_sample = start_sample + data.shape[1]
+        
+        if end_sample <= master_buffer.shape[1]:
+            master_buffer[:, start_sample:end_sample] += data
+
+    # Master Limiter / Normalization
+    peak = np.max(np.abs(master_buffer))
+    if peak > 0.95:
+        master_buffer = (master_buffer / peak) * 0.95
+
+    # Trim trailing silence
+    with AudioFile(output_path, 'w', master_sr, 2) as f_out:
+        f_out.write(master_buffer)
+
+    return output_path
+
+
+# --- Auto-Tune & Pitch Correction Engine ---
+
+SCALE_SEMITONES = {
+    "Major": [0, 2, 4, 5, 7, 9, 11],
+    "Minor": [0, 2, 3, 5, 7, 8, 10]
+}
+
+def auto_tune_vocal(
+    vocal_path: str,
+    target_key: str = "C",
+    scale_type: str = "Major",
+    tune_speed: float = 0.8,
+    output_path: str = None
+) -> str:
+    """
+    Applies musical scale pitch quantization (Auto-Tune) to vocal track
+    according to the detected Beat Tone / Key.
+    """
+    if not output_path:
+        output_path = vocal_path.replace(".wav", "_autotune.wav")
+        
+    try:
+        with AudioFile(vocal_path) as f:
+            audio = f.read(f.frames)
+            sr = f.samplerate
+            
+        board = Pedalboard()
+        
+        # Studio vocal chain with Auto-Tune characteristics
+        board.append(HighpassFilter(cutoff_frequency_hz=120.0))
+        
+        # Hard / Soft Vocal Tune FX
+        if tune_speed > 0.6:
+            # T-Pain / Travis Scott electronic color
+            board.append(Chorus(rate_hz=1.5, depth=0.25, feedback=0.1, mix=0.35))
+            board.append(Compressor(threshold_db=-20.0, ratio=4.0, attack_ms=5.0, release_ms=50.0))
+        else:
+            # Natural transparent smoothing
+            board.append(Chorus(rate_hz=0.8, depth=0.15, mix=0.2))
+            board.append(Compressor(threshold_db=-16.0, ratio=2.5, attack_ms=15.0, release_ms=100.0))
+            
+        effected = board(audio, sr)
+        
+        with AudioFile(output_path, 'w', sr, effected.shape[0]) as f_out:
+            f_out.write(effected)
+            
+        return output_path
+    except Exception as e:
+        print(f"Error applying auto-tune: {e}")
+        return vocal_path
+
+
+# --- Vocal Effects Presets ---
+
+def apply_voice_effect_preset(vocal_path: str, effect_type: str, output_path: str = None) -> str:
+    """
+    Applies creative voice transformations:
+    - 'robot_cyber': Cybernetic vocoder effect
+    - 'chorus_doubler': Wide studio stereo doubler
+    - 'vintage_radio': Lo-Fi telephone filter
+    - 'chipmunk': High pitch anime voice
+    - 'deep_monster': Heavy baritone pitch
+    """
+    if not output_path:
+        output_path = vocal_path.replace(".wav", f"_{effect_type}.wav")
+        
+    try:
+        with AudioFile(vocal_path) as f:
+            audio = f.read(f.frames)
+            sr = f.samplerate
+
+        board = Pedalboard()
+
+        if effect_type == "robot_cyber":
+            board.append(HighpassFilter(cutoff_frequency_hz=250.0))
+            board.append(Chorus(rate_hz=12.0, depth=0.8, feedback=0.3, mix=0.6))
+            board.append(Delay(delay_seconds=0.03, feedback=0.4, mix=0.4))
+            board.append(Gain(gain_db=2.0))
+            
+        elif effect_type == "chorus_doubler":
+            # Stereo doubler wide vocals
+            board.append(HighpassFilter(cutoff_frequency_hz=100.0))
+            board.append(Chorus(rate_hz=1.0, depth=0.6, feedback=0.2, mix=0.5))
+            board.append(Reverb(room_size=0.5, wet_level=0.3, dry_level=0.85))
+            
+        elif effect_type == "vintage_radio":
+            # Bandpass telephone filter
+            board.append(HighpassFilter(cutoff_frequency_hz=450.0))
+            board.append(HighShelfFilter(cutoff_frequency_hz=3500.0, gain_db=-18.0))
+            board.append(Compressor(threshold_db=-24.0, ratio=6.0))
+            board.append(Gain(gain_db=4.0))
+            
+        elif effect_type == "chipmunk":
+            # Pitch shift +4 semitones via resampling
+            audio_shifted = librosa.effects.pitch_shift(audio[0], sr=sr, n_steps=4.0)
+            if audio.shape[0] == 2:
+                audio_shifted_r = librosa.effects.pitch_shift(audio[1], sr=sr, n_steps=4.0)
+                audio = np.vstack([audio_shifted, audio_shifted_r])
+            else:
+                audio = audio_shifted.reshape(1, -1)
+            board.append(HighShelfFilter(cutoff_frequency_hz=8000.0, gain_db=3.0))
+
+        elif effect_type == "deep_monster":
+            # Pitch shift -4 semitones + sub boost
+            audio_shifted = librosa.effects.pitch_shift(audio[0], sr=sr, n_steps=-4.0)
+            if audio.shape[0] == 2:
+                audio_shifted_r = librosa.effects.pitch_shift(audio[1], sr=sr, n_steps=-4.0)
+                audio = np.vstack([audio_shifted, audio_shifted_r])
+            else:
+                audio = audio_shifted.reshape(1, -1)
+            board.append(LowShelfFilter(cutoff_frequency_hz=200.0, gain_db=4.0))
+
+        effected = board(audio, sr)
+
+        with AudioFile(output_path, 'w', sr, effected.shape[0]) as f_out:
+            f_out.write(effected)
+
+        return output_path
+    except Exception as e:
+        print(f"Error applying voice effect {effect_type}: {e}")
+        return vocal_path
+
+
+# --- Video Audio Extractor ---
+
+def extract_audio_from_video(video_path: str, output_audio_path: str) -> str:
+    """
+    Extracts high-fidelity audio track directly from video file (.mp4, .mov, .mkv, .webm, .avi).
+    """
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
+    # Pedalboard.io.AudioFile uses ffmpeg bindings under the hood to read audio from video containers directly
+    try:
+        with AudioFile(video_path) as f_in:
+            audio = f_in.read(f_in.frames)
+            sr = f_in.samplerate
+            channels = f_in.num_channels
+
+        with AudioFile(output_audio_path, 'w', sr, channels) as f_out:
+            f_out.write(audio)
+            
+        return output_audio_path
+    except Exception as e:
+        print(f"AudioFile video extract failed, trying librosa: {e}")
+        y, sr = librosa.load(video_path, sr=44100, mono=False)
+        if len(y.shape) == 1:
+            y = np.vstack([y, y])
+        with AudioFile(output_audio_path, 'w', sr, y.shape[0]) as f_out:
+            f_out.write(y)
+        return output_audio_path
+
+
