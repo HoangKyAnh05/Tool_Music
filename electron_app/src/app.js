@@ -2591,11 +2591,14 @@ function setupMultiTrackTimeline() {
   if (btnDetectBeatStructure) {
     btnDetectBeatStructure.addEventListener("click", async () => {
       let beatPath = "";
-      const activeBeatTrack = state.timeline.tracks.find((t) => t.filepath && !t.isVocal && !t.name.toLowerCase().includes("vocal"));
-      if (activeBeatTrack && activeBeatTrack.filepath) {
-        beatPath = activeBeatTrack.filepath;
+      let targetTrack = state.timeline.tracks.find((t) => t.filepath && !t.isVocal && !t.name.toLowerCase().includes("vocal"));
+      if (targetTrack && targetTrack.filepath) {
+        beatPath = targetTrack.filepath;
       } else if (state.beat.serverPath) {
         beatPath = state.beat.serverPath;
+      } else if (state.timeline.tracks.length > 0 && state.timeline.tracks[0].filepath) {
+        targetTrack = state.timeline.tracks[0];
+        beatPath = targetTrack.filepath;
       }
 
       showToast("🔍 AI đang tự động tách nhịp, gắn các chấm vàng và phân biệt màu Intro, Drop, Outro...", "info");
