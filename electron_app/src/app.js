@@ -141,51 +141,24 @@ document.addEventListener("DOMContentLoaded", () => {
   initSampleData();
 });
 
-// Refresh Application Button Handler
+// Refresh Application Button Handler (Khởi động lại toàn bộ app)
 function setupRefreshButton() {
   const btnRefresh = document.getElementById("btnRefreshApp");
   const refreshIcon = document.getElementById("refreshIcon");
-  const backendStatus = document.getElementById("backendStatus");
 
   if (!btnRefresh) return;
 
-  btnRefresh.addEventListener("click", async () => {
+  btnRefresh.addEventListener("click", () => {
     if (refreshIcon) refreshIcon.classList.add("refresh-spinning");
-    showToast("Đang làm mới dữ liệu và kết nối backend...", "info");
+    showToast("🔄 Đang khởi động lại ứng dụng (Reload)...", "info");
 
-    try {
-      const res = await fetch(`${API_BASE}/api/health`, { cache: "no-store" });
-      if (res.ok) {
-        if (backendStatus) {
-          backendStatus.innerHTML = '<span class="status-dot online"></span><span class="status-text">Backend Online</span>';
-        }
-        await loadBackendSettings();
-        setTimeout(() => {
-          if (refreshIcon) refreshIcon.classList.remove("refresh-spinning");
-          showToast("Đã làm mới ứng dụng thành công!", "success");
-        }, 500);
-      } else {
-        throw new Error("Backend response not ok");
-      }
-    } catch (e) {
-      if (backendStatus) {
-        backendStatus.innerHTML = '<span class="status-dot offline" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span><span class="status-text">Backend Mất Kết Nối</span>';
-      }
-      if (refreshIcon) refreshIcon.classList.remove("refresh-spinning");
-      showToast("Không thể kết nối Python Backend!", "error");
-    }
-  });
-
-  // Double click for hard UI reload
-  btnRefresh.addEventListener("dblclick", () => {
-    showToast("Đang nạp lại toàn bộ giao diện...", "info");
     setTimeout(() => {
       if (window.electronAPI && window.electronAPI.reloadApp) {
         window.electronAPI.reloadApp();
       } else {
         window.location.reload();
       }
-    }, 300);
+    }, 250);
   });
 }
 

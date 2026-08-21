@@ -156,7 +156,7 @@ ipcMain.on('window:close', () => {
 
 ipcMain.on('window:reload', () => {
   if (mainWindow) {
-    mainWindow.reload();
+    mainWindow.webContents.reloadIgnoringCache();
   }
 });
 
