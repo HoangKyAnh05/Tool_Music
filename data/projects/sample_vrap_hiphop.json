@@ -1,0 +1,25 @@
+{
+  "title": "Cháy Cùng Đam Mê (Rap Demo)",
+  "genre": "V-Rap / Hip-Hop",
+  "bpm": 90,
+  "key": "A Minor",
+  "mood": "Mạnh mẽ, tự tin",
+  "voice_style": "vi-VN-NamMinhNeural",
+  "lyrics": {
+    "intro": "(Tiếng bass 808 rền vang, nhịp trống dồn dập)",
+    "verse_1": "Bước qua bao chông gai ta vẫn luôn ngẩng đầu\nKhông bao giờ chùn bước dẫu đêm tối phía trước\nÂm nhạc là ngọn lửa cháy rực trong con tim\nKhát khao những đỉnh cao ta miệt mài đi tìm.",
+    "pre_chorus": "Mọi khó khăn chỉ làm ta thêm vững vàng\nTiến về phía trước mở lối vinh quang.",
+    "chorus": "Bật beat lên và ta cháy hết đêm nay\nCùng âm thanh cuồng nhiệt bay bổng ngất ngây\nKhông dừng lại dẫu thế giới có đổi thay\nKhẳng định bản lĩnh ngay tại nơi đây.",
+    "verse_2": "Từng câu rap là tuyên ngôn của tuổi trẻ\nĐi con đường của mình không ngại ai phán xét\nNắm lấy cơ hội khi thời cơ đã tới\nBiến những ước mơ thành chân trời mới.",
+    "bridge": "Âm vang này sẽ lan tỏa muôn nơi\nĐam mê bất tận rực sáng một đời.",
+    "outro": "(Tiếng scratch đĩa than mờ dần...)"
+  },
+  "mix_settings": {
+    "beat_volume": 1.1,
+    "vocal_volume": 1.3,
+    "reverb": 0.2,
+    "delay": 0.1,
+    "compressor": true,
+    "eq_preset": "bright_pop"
+  }
+}

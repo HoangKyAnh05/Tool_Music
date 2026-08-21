@@ -65,20 +65,25 @@
 
     <!-- Step Progress Workflow Bar -->
     <div class="workflow-steps-bar glass-panel">
-      <div class="step-item active" data-step="tab-beat">
-        <span class="step-num">BƯỚC 1</span>
-        <span class="step-title">📁 Nạp & Đo Beat</span>
+      <div class="step-progress-group">
+        <div class="step-item active" data-step="tab-beat">
+          <span class="step-num">BƯỚC 1</span>
+          <span class="step-title">📁 Nạp & Đo Beat</span>
+        </div>
+        <div class="step-arrow">➔</div>
+        <div class="step-item" data-step="tab-lyrics">
+          <span class="step-num">BƯỚC 2</span>
+          <span class="step-title">✍️ Soạn / Dán Lời</span>
+        </div>
+        <div class="step-arrow">➔</div>
+        <div class="step-item" data-step="tab-mixer">
+          <span class="step-num">BƯỚC 3</span>
+          <span class="step-title">🎙️ Chọn Giọng & Mix Nhạc</span>
+        </div>
       </div>
-      <div class="step-arrow">➔</div>
-      <div class="step-item" data-step="tab-lyrics">
-        <span class="step-num">BƯỚC 2</span>
-        <span class="step-title">✍️ Soạn / Dán Lời Bài Hát</span>
-      </div>
-      <div class="step-arrow">➔</div>
-      <div class="step-item" data-step="tab-mixer">
-        <span class="step-num">BƯỚC 3</span>
-        <span class="step-title">🎙️ Chọn Giọng & Mix Nhạc</span>
-      </div>
+      <button class="btn btn-demo-auto" id="btnAutoLoadFullDemo" title="Tự động nạp Beat mẫu + Lời mẫu + Cấu hình Mix mẫu để test ngay lập tức">
+        <span>⚡ Nạp Trọn Bộ Mẫu (Test Nhanh 1-Click)</span>
+      </button>
     </div>
     
     <!-- TAB 1: BEAT & ANALYZER -->
@@ -97,9 +102,14 @@
             </div>
             <h3>Kéo thả file Beat hoặc Nhấn để tải lên</h3>
             <p class="subtitle">Hỗ trợ định dạng .mp3, .wav, .flac, .ogg, .m4a</p>
-            <button class="btn btn-primary" id="btnSelectBeat">
-              <span>📁 Chọn file Beat từ máy</span>
-            </button>
+            <div class="button-group-vertical">
+              <button class="btn btn-primary" id="btnSelectBeat">
+                <span>📁 Chọn file Beat từ máy</span>
+              </button>
+              <button class="btn btn-secondary mt-2" id="btnLoadSampleBeat">
+                <span>🎵 Nạp Beat Mẫu (Demo Lofi 90 BPM)</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -194,6 +204,15 @@
               </button>
               <button class="btn btn-action" id="btnImportJson">
                 <span>📂 Nạp file JSON có sẵn</span>
+              </button>
+              <div class="sample-actions-divider">
+                <span>HOẶC DÙNG MẪU CÓ SẴN ĐỂ TEST:</span>
+              </div>
+              <button class="btn btn-sample" id="btnLoadSampleLyricsBallad">
+                <span>📝 Nạp Mẫu Lời: V-Pop Ballad</span>
+              </button>
+              <button class="btn btn-sample" id="btnLoadSampleLyricsRap">
+                <span>🔥 Nạp Mẫu Lời: V-Rap / Hip-Hop</span>
               </button>
             </div>
           </div>
@@ -326,6 +345,9 @@
         <div class="studio-card glass-panel mixer-config-card">
           <div class="card-header">
             <h3>🎙️ Cấu Hình Giọng Hát AI (Neural Voice)</h3>
+            <button class="btn btn-sm btn-secondary" id="btnLoadSampleMixPreset" title="Nạp nhanh các thông số phòng thu chuẩn Studio">
+              <span>🎛️ Nạp Preset Mẫu Studio</span>
+            </button>
           </div>
 
           <div class="form-group">

@@ -1,0 +1,25 @@
+{
+  "title": "Bản Tình Ca Mùa Hạ (Demo)",
+  "genre": "V-Pop Ballad",
+  "bpm": 90,
+  "key": "C Major",
+  "mood": "Sâu lắng, cảm xúc",
+  "voice_style": "vi-VN-HoaiMyNeural",
+  "lyrics": {
+    "intro": "(Nhạc dạo piano và guitar lofi êm dịu)",
+    "verse_1": "Từng giọt mưa rơi nhẹ bên góc hiên xưa\nNhớ lại ngày tháng ta cùng đón cơn mưa\nÁnh mắt trao nhau bao điều chưa kịp nói\nĐể lại nỗi nhớ theo năm tháng không vơi.",
+    "pre_chorus": "Dù thời gian trôi qua muôn trùng xa cách\nTrái tim anh vẫn luôn hướng về em.",
+    "chorus": "Và anh sẽ hát khúc ca này gửi trao em\nGiữ trọn bao thương nhớ trong từng đêm đen\nNguyện cùng nhau đi qua muôn trùng giông bão\nĐến nơi chân trời lung linh ngàn ánh sao.",
+    "verse_2": "Bầu trời đêm rạng ngời muôn ánh trăng thanh\nNhư gửi gắm yêu thương về phía em nhanh\nNụ cười rạng rỡ xóa tan mọi âu lo\nCho tình yêu này mãi không hề đắn đo.",
+    "bridge": "Dẫu ngày mai đường đời chia đôi ngả\nLời hẹn ước xưa vẫn luôn vẹn nguyên.",
+    "outro": "(Giai điệu dịu dần, tiếng ngân nga lắng đọng vào không gian...)"
+  },
+  "mix_settings": {
+    "beat_volume": 1.0,
+    "vocal_volume": 1.25,
+    "reverb": 0.35,
+    "delay": 0.15,
+    "compressor": true,
+    "eq_preset": "warm_vocal"
+  }
+}

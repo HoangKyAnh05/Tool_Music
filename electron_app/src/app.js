@@ -130,6 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupRefreshButton();
   setupCopyPrompt();
+  setupDemoSampleLoaders();
   setupBeatUpload();
   setupAudioPlayer();
   setupLyricsActions();
@@ -845,12 +846,141 @@ async function loadBackendSettings() {
 }
 
 function initSampleData() {
-  // Populate sample lyrics template
+  loadDemoBalladLyrics();
+}
+
+function loadDemoBeatData() {
+  const demoFilename = "demo_beat_lofi_90bpm.wav";
+  const demoUrl = `${API_BASE}/static/uploads/${demoFilename}`;
+  
+  state.beat.serverPath = `data/uploads/${demoFilename}`;
+  state.beat.url = demoUrl;
+  state.beat.bpm = 90.0;
+  state.beat.key = "C Major";
+  state.beat.duration = 32.0;
+
+  // Generate pleasant waveform peaks
+  const demoPeaks = [];
+  for (let i = 0; i < 120; i++) {
+    const val = 0.3 + 0.5 * Math.abs(Math.sin(i * 0.15)) * (0.8 + 0.2 * Math.cos(i * 0.05));
+    demoPeaks.push(Math.round(val * 100) / 100);
+  }
+  state.beat.waveform = demoPeaks;
+
+  // Update UI Metrics
+  metricBpm.innerText = "90.0";
+  metricKey.innerText = "C Major";
+  metricDuration.innerText = "00:32";
+  metricFilename.innerText = demoFilename;
+  beatStatusBadge.innerText = "Đã nạp Beat Mẫu Lofi 90 BPM";
+  beatStatusBadge.className = "badge badge-success";
+
+  // Sync to Lyrics tab
+  lyricsBpmInput.value = 90;
+  lyricsKeyInput.value = "C Major";
+  genreSelect.value = "V-Pop Ballad";
+
+  // Enable Player
+  state.audioPlayer.src = demoUrl;
+  state.audioPlayer.load();
+  btnPlayPauseBeat.disabled = false;
+  beatSeekSlider.disabled = false;
+
+  drawWaveform(demoPeaks);
+  showToast("🎵 Đã nạp Beat mẫu Lofi 90 BPM (C Major) thành công!", "success");
+}
+
+function loadDemoBalladLyrics() {
+  songTitleInput.value = "Bản Tình Ca Mùa Hạ";
+  genreSelect.value = "V-Pop Ballad";
+  moodSelect.value = "Sâu lắng, cảm xúc";
+  lyricsBpmInput.value = 90;
+  lyricsKeyInput.value = "C Major";
+  voiceSelect.value = "vi-VN-HoaiMyNeural";
+
   document.getElementById("sec_intro").value = "(Nhạc dạo acoustic guitar êm dịu, nhịp trống nhẹ nhàng)";
   document.getElementById("sec_verse_1").value = "Từng giọt mưa rơi nhẹ bên góc hiên xưa\nNhớ lại ngày tháng ta cùng đón cơn mưa\nÁnh mắt trao nhau bao điều chưa kịp nói\nĐể lại nỗi nhớ theo năm tháng không vơi.";
-  document.getElementById("sec_pre_chorus").value = "Dù thời gian trôi qua muôn trùng xa cách\nTrái tim anh vẫn hướng về em mãi thôi.";
+  document.getElementById("sec_pre_chorus").value = "Dù thời gian trôi qua muôn trùng xa cách\nTrái tim anh vẫn luôn hướng về em.";
   document.getElementById("sec_chorus").value = "Và anh sẽ hát khúc ca này gửi trao em\nGiữ trọn bao thương nhớ trong từng đêm đen\nNguyện cùng nhau đi qua muôn trùng giông bão\nĐến nơi chân trời lung linh ngàn ánh sao.";
   document.getElementById("sec_verse_2").value = "Bầu trời đêm rạng ngời muôn ánh trăng thanh\nNhư gửi gắm yêu thương về phía em nhanh\nNụ cười rạng rỡ xóa tan mọi âu lo\nCho tình yêu này mãi không hề đắn đo.";
   document.getElementById("sec_bridge").value = "Dẫu ngày mai đường đời chia đôi ngả\nLời hẹn ước xưa vẫn luôn vẹn nguyên.";
   document.getElementById("sec_outro").value = "(Giai điệu dịu dần, tiếng ngân nga lắng đọng vào không gian...)";
+}
+
+function loadDemoRapLyrics() {
+  songTitleInput.value = "Cháy Cùng Đam Mê (Rap)";
+  genreSelect.value = "V-Rap / Hip-Hop";
+  moodSelect.value = "Mạnh mẽ, tự tin";
+  lyricsBpmInput.value = 90;
+  lyricsKeyInput.value = "A Minor";
+  voiceSelect.value = "vi-VN-NamMinhNeural";
+
+  document.getElementById("sec_intro").value = "(Tiếng bass rền vang, nhịp trống dồn dập)";
+  document.getElementById("sec_verse_1").value = "Bước qua bao chông gai ta vẫn luôn ngẩng đầu\nKhông bao giờ chùn bước dẫu đêm tối phía trước\nÂm nhạc là ngọn lửa cháy rực trong con tim\nKhát khao những đỉnh cao ta miệt mài đi tìm.";
+  document.getElementById("sec_pre_chorus").value = "Mọi khó khăn chỉ làm ta thêm vững vàng\nTiến về phía trước mở lối vinh quang.";
+  document.getElementById("sec_chorus").value = "Bật beat lên và ta cháy hết đêm nay\nCùng âm thanh cuồng nhiệt bay bổng ngất ngây\nKhông dừng lại dẫu thế giới có đổi thay\nKhẳng định bản lĩnh ngay tại nơi đây.";
+  document.getElementById("sec_verse_2").value = "Từng câu rap là tuyên ngôn của tuổi trẻ\nĐi con đường của mình không ngại ai phán xét\nNắm lấy cơ hội khi thời cơ đã tới\nBiến những ước mơ thành chân trời mới.";
+  document.getElementById("sec_bridge").value = "Âm vang này sẽ lan tỏa muôn nơi\nĐam mê bất tận rực sáng một đời.";
+  document.getElementById("sec_outro").value = "(Tiếng scratch đĩa than mờ dần...)";
+}
+
+function loadDemoMixPreset() {
+  mixBeatVol.value = "1.0";
+  valMixBeatVol.innerText = "1.0x";
+  mixVocalVol.value = "1.25";
+  valMixVocalVol.innerText = "1.25x";
+  mixReverb.value = "0.35";
+  valMixReverb.innerText = "35%";
+  mixDelay.value = "0.15";
+  valMixDelay.innerText = "15%";
+  voiceSpeedSlider.value = "0";
+  valSpeed.innerText = "0%";
+  voicePitchSlider.value = "0";
+  valPitch.innerText = "0 Hz";
+  eqPresetSelect.value = "warm_vocal";
+  compressorToggle.checked = true;
+}
+
+function setupDemoSampleLoaders() {
+  const btnLoadSampleBeat = document.getElementById("btnLoadSampleBeat");
+  if (btnLoadSampleBeat) {
+    btnLoadSampleBeat.addEventListener("click", () => {
+      loadDemoBeatData();
+    });
+  }
+
+  const btnLoadSampleLyricsBallad = document.getElementById("btnLoadSampleLyricsBallad");
+  if (btnLoadSampleLyricsBallad) {
+    btnLoadSampleLyricsBallad.addEventListener("click", () => {
+      loadDemoBalladLyrics();
+      showToast("Đã nạp lời mẫu: V-Pop Ballad", "success");
+    });
+  }
+
+  const btnLoadSampleLyricsRap = document.getElementById("btnLoadSampleLyricsRap");
+  if (btnLoadSampleLyricsRap) {
+    btnLoadSampleLyricsRap.addEventListener("click", () => {
+      loadDemoRapLyrics();
+      showToast("Đã nạp lời mẫu: V-Rap / Hip-Hop", "success");
+    });
+  }
+
+  const btnLoadSampleMixPreset = document.getElementById("btnLoadSampleMixPreset");
+  if (btnLoadSampleMixPreset) {
+    btnLoadSampleMixPreset.addEventListener("click", () => {
+      loadDemoMixPreset();
+      showToast("Đã nạp Preset Mixer Studio (Reverb 35%, Warm Vocal)", "success");
+    });
+  }
+
+  const btnAutoLoadFullDemo = document.getElementById("btnAutoLoadFullDemo");
+  if (btnAutoLoadFullDemo) {
+    btnAutoLoadFullDemo.addEventListener("click", () => {
+      loadDemoBeatData();
+      loadDemoBalladLyrics();
+      loadDemoMixPreset();
+      switchTab("tab-mixer");
+      showToast("⚡ Đã nạp TRỌN BỘ MẪU! Hãy bấm 'TẠO BÀI HÁT & MIX NHẠC' bên dưới để nghe thử ngay!", "success");
+    });
+  }
 }
