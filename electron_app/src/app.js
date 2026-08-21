@@ -1729,6 +1729,24 @@ function setupMultiTrackTimeline() {
     return audio;
   }
 
+  function pauseAllOtherAppPlayers() {
+    const players = [
+      state.audioPlayer,
+      document.getElementById("masterAudioPlayer"),
+      document.getElementById("karaokeAudioPlayer"),
+      document.getElementById("vocalIsolatedPlayer"),
+      document.getElementById("rawRecordAudioPlayer"),
+      document.getElementById("tunedRecordAudioPlayer"),
+      document.getElementById("mixedRecordAudioPlayer"),
+      document.getElementById("aiMusicAudioPlayer")
+    ];
+    players.forEach((p) => {
+      if (p && !p.paused) {
+        try { p.pause(); } catch (e) {}
+      }
+    });
+  }
+
   function syncTrackAudio(track, currentSec, isPlaying) {
     if (!track.filepath || track.filepath.trim() === "") {
       if (trackAudioPool[track.id]) {
@@ -1738,8 +1756,8 @@ function setupMultiTrackTimeline() {
     }
 
     const audio = getOrCreateAudio(track);
-    const vol = track.muted ? 0 : (typeof track.volume === "number" ? track.volume : 1.0);
-    audio.volume = Math.max(0, Math.min(1.0, vol));
+    const vol = track.muted ? 0 : (typeof track.volume === "number" ? Math.min(1.0, Math.max(0, track.volume)) : 1.0);
+    audio.volume = vol;
 
     const startSec = track.start_time_sec || 0;
     const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0)
@@ -1750,46 +1768,22 @@ function setupMultiTrackTimeline() {
     if (currentSec >= startSec && currentSec < endSec) {
       const desiredOffset = currentSec - startSec;
       if (isPlaying) {
-        if (audio.readyState < 2) {
-          if (!audio.onloadedmetadata) {
-            audio.onloadedmetadata = () => {
-              if (state.timeline.isPlaying || timelineRecState.isRecording) {
-                const off = Math.max(0, state.timeline.playheadSec - (track.start_time_sec || 0));
-                audio.currentTime = off;
-                trackPlayPending[track.id] = true;
-                audio.play().catch((e) => console.warn(e)).finally(() => {
-                  trackPlayPending[track.id] = false;
-                });
-              }
-            };
-          }
-        } else {
-          if (audio.paused && !trackPlayPending[track.id]) {
-            if (Math.abs(audio.currentTime - desiredOffset) > 0.1 && !audio.seeking) {
-              audio.currentTime = desiredOffset;
-            }
-            trackPlayPending[track.id] = true;
-            audio.play().catch((e) => console.warn(e)).finally(() => {
-              trackPlayPending[track.id] = false;
-            });
-          } else if (!audio.paused && !audio.seeking) {
-            if (Math.abs(audio.currentTime - desiredOffset) > 0.6) {
-              audio.currentTime = desiredOffset;
-            }
-          }
+        if (audio.paused) {
+          try {
+            audio.currentTime = desiredOffset;
+          } catch (e) {}
+          audio.play().catch((e) => console.warn(e));
         }
       } else {
         audio.pause();
-        trackPlayPending[track.id] = false;
-        if (audio.readyState >= 1 && !audio.seeking) {
-          audio.currentTime = desiredOffset;
+        if (audio.readyState >= 1) {
+          try { audio.currentTime = desiredOffset; } catch (e) {}
         }
       }
     } else {
       audio.pause();
-      trackPlayPending[track.id] = false;
-      if (currentSec < startSec && audio.readyState >= 1 && !audio.seeking) {
-        audio.currentTime = 0;
+      if (currentSec < startSec && audio.readyState >= 1) {
+        try { audio.currentTime = 0; } catch (e) {}
       }
     }
   }
@@ -2420,6 +2414,8 @@ function setupMultiTrackTimeline() {
   });
 
   function playTimeline() {
+    pauseAllOtherAppPlayers();
+
     if (state.timeline.tracks.length > 0 && !state.timeline.tracks[0].filepath && state.beat.serverPath) {
       state.timeline.tracks[0].filepath = state.beat.serverPath;
     }
@@ -2431,8 +2427,9 @@ function setupMultiTrackTimeline() {
     }
 
     recalculateTotalDuration();
+    const totalDur = state.timeline.totalDurationSec || 60.0;
 
-    if (state.timeline.playheadSec >= state.timeline.totalDurationSec - 0.5) {
+    if (state.timeline.playheadSec >= totalDur - 0.5) {
       state.timeline.playheadSec = 0;
     }
 
@@ -2440,25 +2437,85 @@ function setupMultiTrackTimeline() {
     timelinePlayIcon.innerText = "⏸";
     timelinePlayText.innerText = "Tạm dừng";
 
-    syncAllTracks(state.timeline.playheadSec, true);
+    const startFromSec = state.timeline.playheadSec;
+
+    // Start all eligible tracks cleanly
+    state.timeline.tracks.forEach((track) => {
+      if (!track.filepath || track.filepath.trim() === "") {
+        if (trackAudioPool[track.id]) trackAudioPool[track.id].pause();
+        return;
+      }
+      const audio = getOrCreateAudio(track);
+      const vol = track.muted ? 0 : (typeof track.volume === "number" ? Math.min(1.0, Math.max(0, track.volume)) : 1.0);
+      audio.volume = vol;
+
+      const startSec = track.start_time_sec || 0;
+      const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : (track.duration_sec || 30.0);
+      const endSec = startSec + dur;
+
+      if (startFromSec >= startSec && startFromSec < endSec) {
+        const offset = startFromSec - startSec;
+        try { audio.currentTime = offset; } catch (e) {}
+        audio.play().catch((e) => console.warn(e));
+      } else {
+        audio.pause();
+        if (startFromSec < startSec && audio.readyState >= 1) {
+          try { audio.currentTime = 0; } catch (e) {}
+        }
+      }
+    });
 
     clearInterval(state.timeline.playInterval);
-    const tickIntervalMs = 100;
-    const tickSec = tickIntervalMs / 1000.0;
+    let lastTime = performance.now();
 
     state.timeline.playInterval = setInterval(() => {
-      state.timeline.playheadSec += tickSec;
-      if (state.timeline.playheadSec >= state.timeline.totalDurationSec) {
+      if (!state.timeline.isPlaying) {
+        clearInterval(state.timeline.playInterval);
+        return;
+      }
+
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000.0;
+      lastTime = now;
+
+      state.timeline.playheadSec += dt;
+
+      if (state.timeline.playheadSec >= (state.timeline.totalDurationSec || 60.0)) {
         stopTimeline();
         return;
       }
 
-      timelineCurrentTime.innerText = formatSeconds(state.timeline.playheadSec);
-      const percent = (state.timeline.playheadSec / state.timeline.totalDurationSec) * 100;
-      timelinePlayhead.style.left = `${Math.min(100, Math.max(0, percent))}%`;
+      if (timelineCurrentTime) {
+        timelineCurrentTime.innerText = formatSeconds(state.timeline.playheadSec);
+      }
+      const percent = (state.timeline.playheadSec / (state.timeline.totalDurationSec || 60.0)) * 100;
+      if (timelinePlayhead) {
+        timelinePlayhead.style.left = `${Math.min(100, Math.max(0, percent))}%`;
+      }
 
-      syncAllTracks(state.timeline.playheadSec, true);
-    }, tickIntervalMs);
+      // Check if tracks reach start timestamp or end timestamp
+      state.timeline.tracks.forEach((track) => {
+        if (!track.filepath || track.filepath.trim() === "") return;
+        const audio = trackAudioPool[track.id];
+        if (!audio) return;
+
+        const startSec = track.start_time_sec || 0;
+        const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : (track.duration_sec || 30.0);
+        const endSec = startSec + dur;
+
+        if (state.timeline.playheadSec >= startSec && state.timeline.playheadSec < endSec) {
+          if (audio.paused) {
+            const off = Math.max(0, state.timeline.playheadSec - startSec);
+            try { audio.currentTime = off; } catch (e) {}
+            audio.play().catch((e) => console.warn(e));
+          }
+        } else {
+          if (!audio.paused) {
+            audio.pause();
+          }
+        }
+      });
+    }, 40);
   }
 
   function pauseTimeline() {
@@ -2467,7 +2524,12 @@ function setupMultiTrackTimeline() {
     timelinePlayText.innerText = "Phát Timeline";
     clearInterval(state.timeline.playInterval);
 
-    syncAllTracks(state.timeline.playheadSec, false);
+    state.timeline.tracks.forEach((track) => {
+      const audio = trackAudioPool[track.id];
+      if (audio) {
+        audio.pause();
+      }
+    });
   }
 
   function stopTimeline() {
@@ -2480,7 +2542,9 @@ function setupMultiTrackTimeline() {
       const audio = trackAudioPool[track.id];
       if (audio) {
         audio.pause();
-        if (audio.readyState >= 1) audio.currentTime = 0;
+        if (audio.readyState >= 1) {
+          try { audio.currentTime = 0; } catch (e) {}
+        }
       }
     });
   }
@@ -2494,11 +2558,33 @@ function setupMultiTrackTimeline() {
     const clickX = clientX - rect.left;
     const percent = Math.max(0, Math.min(1, clickX / rect.width));
     recalculateTotalDuration();
-    const newSec = percent * state.timeline.totalDurationSec;
+    const newSec = percent * (state.timeline.totalDurationSec || 60.0);
     state.timeline.playheadSec = newSec;
     timelineCurrentTime.innerText = formatSeconds(newSec);
     timelinePlayhead.style.left = `${(percent * 100).toFixed(2)}%`;
-    syncAllTracks(newSec, state.timeline.isPlaying);
+
+    state.timeline.tracks.forEach((track) => {
+      if (!track.filepath || track.filepath.trim() === "") return;
+      const audio = trackAudioPool[track.id];
+      if (!audio) return;
+
+      const startSec = track.start_time_sec || 0;
+      const dur = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : (track.duration_sec || 30.0);
+      const endSec = startSec + dur;
+
+      if (newSec >= startSec && newSec < endSec) {
+        const off = newSec - startSec;
+        try { audio.currentTime = off; } catch (e) {}
+        if (state.timeline.isPlaying) {
+          audio.play().catch(() => {});
+        }
+      } else {
+        audio.pause();
+        if (newSec < startSec && audio.readyState >= 1) {
+          try { audio.currentTime = 0; } catch (e) {}
+        }
+      }
+    });
   }
 
   // 1. Drag on Playhead line or top knob
@@ -3193,19 +3279,15 @@ function setupVocalSeparator() {
         return;
       }
 
-      // Look for an existing Vocal track or Track 3 or empty track
-      let vocalTrack = state.timeline.tracks.find((t) => t.isVocal || t.name.toLowerCase().includes("vocal") || t.id === "track_3");
-      if (!vocalTrack) {
-        vocalTrack = state.timeline.tracks.find((t) => !t.filepath || t.filepath.trim() === "");
-      }
-
+      // Send to Step 5 Timeline (Always align to 0.0s and volume 1.0 to avoid distortion)
       if (vocalTrack) {
         vocalTrack.filepath = vocalPath;
         vocalTrack.rawFilepath = vocalPath;
         vocalTrack.name = "🎙️ Acapella Vocal (Đã tách)";
         vocalTrack.duration_sec = duration;
         vocalTrack.isVocal = true;
-        vocalTrack.start_time_sec = vocalTrack.start_time_sec || 0.0;
+        vocalTrack.start_time_sec = 0.0;
+        vocalTrack.volume = 1.0;
       } else {
         vocalTrack = {
           id: `track_vocal_${Date.now()}`,
@@ -3214,7 +3296,7 @@ function setupVocalSeparator() {
           rawFilepath: vocalPath,
           start_time_sec: 0.0,
           duration_sec: duration,
-          volume: 1.2,
+          volume: 1.0,
           muted: false,
           isVocal: true,
           colorClass: "block-pink"
