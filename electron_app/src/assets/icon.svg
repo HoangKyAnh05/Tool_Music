@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0e17"/>
+      <stop offset="50%" stop-color="#161b2a"/>
+      <stop offset="100%" stop-color="#07080d"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#4facfe"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bgGrad)" stroke="url(#glowGrad)" stroke-width="6"/>
+
+  <!-- Waveform lines in background -->
+  <g opacity="0.3" stroke="#00f2fe" stroke-width="4" stroke-linecap="round">
+    <line x1="90" y1="256" x2="90" y2="256"/>
+    <line x1="120" y1="220" x2="120" y2="292"/>
+    <line x1="150" y1="180" x2="150" y2="332"/>
+    <line x1="180" y1="240" x2="180" y2="272"/>
+    <line x1="332" y1="230" x2="332" y2="282"/>
+    <line x1="362" y1="170" x2="362" y2="342"/>
+    <line x1="392" y1="210" x2="392" y2="302"/>
+    <line x1="422" y1="256" x2="422" y2="256"/>
+  </g>
+
+  <!-- Glowing Musical Note & Headphone Symbol -->
+  <g filter="url(#neonGlow)">
+    <!-- Musical Note -->
+    <path d="M220 330 C220 355 198 375 170 375 C142 375 120 355 120 330 C120 305 142 285 170 285 C185 285 198 292 208 302 L208 170 L340 130 L340 290 C340 315 318 335 290 335 C262 335 240 315 240 290 C240 265 262 245 290 245 C305 245 318 252 328 262 L328 150 L220 182 Z" fill="url(#glowGrad)"/>
+    
+    <!-- Audio Wave Sparkles -->
+    <circle cx="370" cy="120" r="10" fill="#00f2fe"/>
+    <circle cx="395" cy="145" r="6" fill="#a855f7"/>
+  </g>
+</svg>

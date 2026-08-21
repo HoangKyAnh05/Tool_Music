@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Music & Vocal Studio - 100% Free Studio Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="studio-theme">
+  <!-- Studio Top Bar -->
+  <header class="studio-header">
+    <div class="header-left">
+      <div class="studio-logo">
+        <div class="logo-icon-glow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">AI MUSIC & VOCAL STUDIO</span>
+          <span class="logo-badge">PRO v1.0 • 100% FREE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="studio-nav">
+      <button class="nav-tab active" data-tab="tab-beat">
+        <span class="tab-icon">🎚️</span>
+        <span class="tab-label">1. Beat & BPM Analyzer</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-lyrics">
+        <span class="tab-icon">✍️</span>
+        <span class="tab-label">2. AI Lyricist & Smart Paste</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-mixer">
+        <span class="tab-icon">🎛️</span>
+        <span class="tab-label">3. Vocal & Master Mixer</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">4. Cài Đặt</span>
+      </button>
+    </nav>
+
+    <div class="header-right">
+      <div class="backend-status" id="backendStatus">
+        <span class="status-dot online"></span>
+        <span class="status-text">Backend Online</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="studio-workspace">
+    
+    <!-- TAB 1: BEAT & ANALYZER -->
+    <section class="tab-content active" id="tab-beat">
+      <div class="grid-layout beat-grid">
+        <!-- Beat Upload Card -->
+        <div class="studio-card glass-panel dropzone-card" id="dropZone">
+          <input type="file" id="beatFileInput" accept="audio/*" hidden>
+          <div class="dropzone-content">
+            <div class="drop-icon-anim">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <h3>Kéo thả file Beat hoặc Nhấn để tải lên</h3>
+            <p class="subtitle">Hỗ trợ định dạng .mp3, .wav, .flac, .ogg, .m4a</p>
+            <button class="btn btn-primary" id="btnSelectBeat">
+              <span>📁 Chọn file Beat từ máy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Beat Analysis & Waveform Card -->
+        <div class="studio-card glass-panel beat-info-card">
+          <div class="card-header">
+            <h3>📊 Thông số Beat & Sóng Âm (Librosa AI)</h3>
+            <span class="badge" id="beatStatusBadge">Chờ tải file beat...</span>
+          </div>
+
+          <!-- Quick Metrics Bar -->
+          <div class="metrics-grid">
+            <div class="metric-box">
+              <span class="metric-label">NHỊP ĐỘ (BPM)</span>
+              <span class="metric-value neon-cyan" id="metricBpm">--</span>
+              <span class="metric-sub">Tự động bắt nhịp</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">TONE / KEY</span>
+              <span class="metric-value neon-violet" id="metricKey">--</span>
+              <span class="metric-sub">Tone chuẩn</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">THỜI LƯỢNG</span>
+              <span class="metric-value neon-pink" id="metricDuration">--:--</span>
+              <span class="metric-sub">Độ dài beat</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">TÊN FILE</span>
+              <span class="metric-value text-ellipsis" id="metricFilename">Chưa chọn</span>
+              <span class="metric-sub">Audio Source</span>
+            </div>
+          </div>
+
+          <!-- Waveform Canvas Display -->
+          <div class="waveform-container">
+            <canvas id="waveformCanvas" width="800" height="110"></canvas>
+            <div class="waveform-progress" id="waveformProgress"></div>
+          </div>
+
+          <!-- Audio Player Bar -->
+          <div class="audio-control-bar">
+            <button class="btn-play-pause" id="btnPlayPauseBeat" disabled>
+              <span id="playIcon">▶</span>
+            </button>
+            <div class="playback-timer">
+              <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+            </div>
+            <input type="range" id="beatSeekSlider" class="custom-slider flex-1" min="0" max="100" value="0" disabled>
+            <div class="volume-box">
+              <span>🔊</span>
+              <input type="range" id="beatVolumeSlider" class="custom-slider volume-slider" min="0" max="1" step="0.05" value="0.9">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: AI LYRICIST & SMART PASTE -->
+    <section class="tab-content" id="tab-lyrics">
+      <div class="lyrics-workspace">
+        
+        <!-- Left Column: AI Generator Controls & Smart Actions -->
+        <div class="lyrics-sidebar glass-panel">
+          <div class="sidebar-section">
+            <h3 class="section-title">⚡ Smart Actions</h3>
+            <div class="smart-btn-group">
+              <button class="btn btn-action glow-cyan" id="btnSmartPaste">
+                <span>📋 Dán nhanh JSON từ Clipboard</span>
+              </button>
+              <button class="btn btn-action glow-violet" id="btnExportJson">
+                <span>📤 Xuất Project JSON</span>
+              </button>
+              <button class="btn btn-action" id="btnImportJson">
+                <span>📥 Nạp file JSON</span>
+              </button>
+            </div>
+          </div>
+
+          <hr class="studio-divider">
+
+          <div class="sidebar-section">
+            <h3 class="section-title">🤖 AI Lyricist (Gemini 1.5 Flash)</h3>
+            
+            <div class="form-group">
+              <label>Ý tưởng bài hát / Lời thô:</label>
+              <textarea id="promptIdeaInput" rows="3" placeholder="Nhập câu chuyện, ý tưởng, cảm xúc hoặc một đoạn thơ nháp..."></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thể loại nhạc:</label>
+                <select id="genreSelect" class="studio-select">
+                  <option value="V-Pop Ballad" selected>V-Pop Ballad</option>
+                  <option value="V-Rap / Hip-Hop">V-Rap / Hip-Hop</option>
+                  <option value="R&B / Soul">R&B / Soul</option>
+                  <option value="Lofi Chill">Lofi Chill</option>
+                  <option value="EDM / Pop Dance">EDM / Pop Dance</option>
+                  <option value="Acoustic Folk">Acoustic Folk</option>
+                  <option value="Indie Pop">Indie Pop</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Tâm trạng (Mood):</label>
+                <select id="moodSelect" class="studio-select">
+                  <option value="Sâu lắng, cảm xúc" selected>Sâu lắng, cảm xúc</option>
+                  <option value="Vui tươi, năng động">Vui tươi, năng động</option>
+                  <option value="Buồn, hoài niệm">Buồn, hoài niệm</option>
+                  <option value="Mạnh mẽ, tự tin">Mạnh mẽ, tự tin</option>
+                  <option value="Chill, thư giãn">Chill, thư giãn</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>BPM đồng bộ:</label>
+                <input type="number" id="lyricsBpmInput" class="studio-input" value="90" min="40" max="240">
+              </div>
+              <div class="form-group">
+                <label>Tone (Key):</label>
+                <input type="text" id="lyricsKeyInput" class="studio-input" value="C Major">
+              </div>
+            </div>
+
+            <button class="btn btn-magic w-100" id="btnOptimizeLyrics">
+              <span class="magic-icon">✨</span>
+              <span>Tối ưu lời & Căn nhịp Beat</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Song Structure Lyrics Editor -->
+        <div class="lyrics-editor-container glass-panel">
+          <div class="editor-header">
+            <div class="song-title-group">
+              <input type="text" id="songTitleInput" class="title-input" value="Bản Tình Ca Mùa Hạ" placeholder="Nhập tên bài hát...">
+              <span class="title-sub" id="lyricStructureInfo">Cấu trúc 7 đoạn tiêu chuẩn Studio</span>
+            </div>
+            <button class="btn btn-sm btn-clear" id="btnClearLyrics" title="Xóa trắng lời">🗑️ Làm trống</button>
+          </div>
+
+          <div class="sections-scroll-area">
+            
+            <!-- Intro -->
+            <div class="section-card">
+              <div class="section-badge badge-intro">[Intro] Dạo đầu</div>
+              <textarea class="section-input" id="sec_intro" rows="2" placeholder="(Nhạc dạo du dương, tiếng guitar êm ái...)"></textarea>
+            </div>
+
+            <!-- Verse 1 -->
+            <div class="section-card">
+              <div class="section-badge badge-verse">[Verse 1] Lời 1</div>
+              <textarea class="section-input" id="sec_verse_1" rows="3" placeholder="Từng giọt mưa rơi nhẹ bên góc hiên..."></textarea>
+            </div>
+
+            <!-- Pre-Chorus -->
+            <div class="section-card">
+              <div class="section-badge badge-pre">[Pre-Chorus] Tiền Điệp Khúc</div>
+              <textarea class="section-input" id="sec_pre_chorus" rows="2" placeholder="Dù thời gian trôi qua muôn trùng xa..."></textarea>
+            </div>
+
+            <!-- Chorus -->
+            <div class="section-card highlight-chorus">
+              <div class="section-badge badge-chorus">[Chorus] Điệp Khúc (Điểm nhấn)</div>
+              <textarea class="section-input" id="sec_chorus" rows="4" placeholder="Và ta sẽ hát khúc ca này cho em..."></textarea>
+            </div>
+
+            <!-- Verse 2 -->
+            <div class="section-card">
+              <div class="section-badge badge-verse">[Verse 2] Lời 2</div>
+              <textarea class="section-input" id="sec_verse_2" rows="3" placeholder="Bầu trời đêm lung linh ngàn vì tinh tú..."></textarea>
+            </div>
+
+            <!-- Bridge -->
+            <div class="section-card">
+              <div class="section-badge badge-bridge">[Bridge] Cao Trào</div>
+              <textarea class="section-input" id="sec_bridge" rows="2" placeholder="Dẫu ngày mai đường đời chia lối..."></textarea>
+            </div>
+
+            <!-- Outro -->
+            <div class="section-card">
+              <div class="section-badge badge-outro">[Outro] Kết Thúc</div>
+              <textarea class="section-input" id="sec_outro" rows="2" placeholder="(Giai điệu dịu dần, lắng sâu...)"></textarea>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: VOCAL & MASTER MIXER -->
+    <section class="tab-content" id="tab-mixer">
+      <div class="mixer-layout">
+        
+        <!-- Left Side: Vocal Generator Configuration -->
+        <div class="studio-card glass-panel mixer-config-card">
+          <div class="card-header">
+            <h3>🎙️ Cấu Hình Giọng Hát AI (Neural Voice)</h3>
+          </div>
+
+          <div class="form-group">
+            <label>Chọn Giọng Hát AI:</label>
+            <select id="voiceSelect" class="studio-select voice-select">
+              <option value="vi-VN-HoaiMyNeural" selected>Hoài My (Nữ - Truyền cảm, ngọt ngào - Tiếng Việt)</option>
+              <option value="vi-VN-NamMinhNeural">Nam Minh (Nam - Trầm ấm, mạnh mẽ - Tiếng Việt)</option>
+              <option value="en-US-JennyNeural">Jenny (Nữ - Pop / RnB Style - Tiếng Anh)</option>
+              <option value="en-US-GuyNeural">Guy (Nam - Baritone Deep - Tiếng Anh)</option>
+              <option value="en-US-ChristopherNeural">Christopher (Nam - Flow Rap - Tiếng Anh)</option>
+              <option value="ja-JP-NanamiNeural">Nanami (Nữ - J-Pop Anime Style)</option>
+              <option value="ko-KR-SunHiNeural">Sun-Hi (Nữ - K-Pop Style)</option>
+            </select>
+          </div>
+
+          <div class="slider-control-group">
+            <div class="slider-row">
+              <div class="slider-label-box">
+                <span>Tốc Độ Hát (Tempo):</span>
+                <span class="slider-num-value" id="valSpeed">0%</span>
+              </div>
+              <input type="range" id="voiceSpeedSlider" class="custom-slider" min="-30" max="30" step="1" value="0">
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-box">
+                <span>Cao Độ (Pitch Shift):</span>
+                <span class="slider-num-value" id="valPitch">0 Hz</span>
+              </div>
+              <input type="range" id="voicePitchSlider" class="custom-slider" min="-60" max="60" step="5" value="0">
+            </div>
+
+            <div class="slider-row">
+              <div class="slider-label-box">
+                <span>Độ Trễ Vocal (Offset ms):</span>
+                <span class="slider-num-value" id="valOffset">0 ms</span>
+              </div>
+              <input type="range" id="vocalOffsetSlider" class="custom-slider" min="0" max="2000" step="50" value="0">
+            </div>
+          </div>
+
+          <hr class="studio-divider">
+
+          <div class="card-header">
+            <h3>🎛️ Bàn Trộn Âm Thanh (Studio Master FX)</h3>
+          </div>
+
+          <div class="faders-grid">
+            <!-- Beat Volume -->
+            <div class="fader-channel">
+              <span class="channel-name">BEAT VOL</span>
+              <div class="vu-meter"><div class="vu-fill" style="height: 75%;"></div></div>
+              <input type="range" id="mixBeatVol" class="vertical-slider" min="0" max="2" step="0.05" value="1.0" orient="vertical">
+              <span class="channel-val" id="valMixBeatVol">1.0x</span>
+            </div>
+
+            <!-- Vocal Volume -->
+            <div class="fader-channel">
+              <span class="channel-name">VOCAL VOL</span>
+              <div class="vu-meter"><div class="vu-fill active-vocal" style="height: 85%;"></div></div>
+              <input type="range" id="mixVocalVol" class="vertical-slider" min="0" max="2" step="0.05" value="1.2" orient="vertical">
+              <span class="channel-val" id="valMixVocalVol">1.2x</span>
+            </div>
+
+            <!-- Reverb Space -->
+            <div class="fader-channel">
+              <span class="channel-name">REVERB</span>
+              <div class="vu-meter"><div class="vu-fill active-fx" style="height: 40%;"></div></div>
+              <input type="range" id="mixReverb" class="vertical-slider" min="0" max="1" step="0.05" value="0.35" orient="vertical">
+              <span class="channel-val" id="valMixReverb">35%</span>
+            </div>
+
+            <!-- Delay Echo -->
+            <div class="fader-channel">
+              <span class="channel-name">DELAY</span>
+              <div class="vu-meter"><div class="vu-fill active-fx" style="height: 20%;"></div></div>
+              <input type="range" id="mixDelay" class="vertical-slider" min="0" max="1" step="0.05" value="0.15" orient="vertical">
+              <span class="channel-val" id="valMixDelay">15%</span>
+            </div>
+          </div>
+
+          <div class="form-row mt-3">
+            <div class="form-group">
+              <label>Preset EQ Studio:</label>
+              <select id="eqPresetSelect" class="studio-select">
+                <option value="warm_vocal" selected>Warm Vocal (Ấm áp, dày dặn)</option>
+                <option value="bright_pop">Bright Pop (Sáng, sắc nét)</option>
+                <option value="radio">Vintage Radio</option>
+                <option value="flat">Flat / Tự nhiên</option>
+              </select>
+            </div>
+            <div class="form-group flex-center-vertical">
+              <label class="switch-container">
+                <input type="checkbox" id="compressorToggle" checked>
+                <span class="switch-slider"></span>
+                <span class="switch-label">Studio Compressor</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Big Action Button -->
+          <button class="btn btn-big-master mt-4" id="btnStartMixing">
+            <span class="pulse-icon">🔥</span>
+            <span>TẠO BÀI HÁT & MIX NHẠC 1-CLICK</span>
+          </button>
+        </div>
+
+        <!-- Right Side: Mastering Output & Audio Monitor -->
+        <div class="studio-card glass-panel master-monitor-card">
+          <div class="card-header">
+            <h3>🎧 Master Audio Player & Xuất Bản</h3>
+            <span class="badge badge-success" id="masterStatusBadge">Sẵn sàng mix</span>
+          </div>
+
+          <!-- Progress Animation / Status Box -->
+          <div class="master-progress-box" id="masterProgressBox" style="display: none;">
+            <div class="spinner-ring"></div>
+            <div class="progress-info">
+              <h4 id="progressStatusTitle">Đang xử lý âm thanh AI...</h4>
+              <p id="progressStatusDesc">Sinh giọng hát Neural -> Áp hiệu ứng Studio DSP -> Master Track...</p>
+            </div>
+          </div>
+
+          <!-- Output Audio Player -->
+          <div class="master-player-card" id="masterPlayerCard">
+            <div class="vinyl-record-container">
+              <div class="vinyl-disc" id="vinylDisc">
+                <div class="vinyl-grooves"></div>
+                <div class="vinyl-center">🎶</div>
+              </div>
+            </div>
+
+            <div class="master-song-meta">
+              <h3 id="masterSongTitle">Chưa có bài hát được mix</h3>
+              <p id="masterSongSub">Hãy nhấn nút 'Tạo bài hát & Mix nhạc' để xuất bản bài hát</p>
+            </div>
+
+            <div class="master-audio-wrapper">
+              <audio id="masterAudioPlayer" controls class="w-100"></audio>
+            </div>
+
+            <div class="master-action-buttons">
+              <a href="#" id="btnDownloadMaster" class="btn btn-download disabled" download="AI_Master_Song.mp3">
+                <span>⬇️ TẢI BÀI HÁT VỀ MÁY (.MP3)</span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS -->
+    <section class="tab-content" id="tab-settings">
+      <div class="settings-container glass-panel">
+        <div class="card-header">
+          <h3>⚙️ Cài Đặt Ứng Dụng & API Keys</h3>
+        </div>
+
+        <div class="settings-body">
+          <div class="form-group">
+            <label>Google Gemini API Key (Miễn phí 100% qua Google AI Studio):</label>
+            <div class="input-with-button">
+              <input type="password" id="geminiApiKeyInput" class="studio-input flex-1" placeholder="AIzaSy...">
+              <button class="btn btn-secondary" id="btnToggleApiKey">👁️ Hiện</button>
+            </div>
+            <p class="input-hint">
+              Lấy API Key hoàn toàn miễn phí tại 
+              <a href="#" id="linkAiStudio" class="link-glow">https://aistudio.google.com/app/apikey</a>.
+              Nếu chưa có key, app vẫn tự động hỗ trợ bộ mẫu lời phong phú!
+            </p>
+          </div>
+
+          <hr class="studio-divider">
+
+          <div class="form-group">
+            <label>Giọng hát mặc định:</label>
+            <select id="defaultVoiceSelect" class="studio-select">
+              <option value="vi-VN-HoaiMyNeural">Hoài My (Nữ - Truyền cảm, ngọt ngào)</option>
+              <option value="vi-VN-NamMinhNeural">Nam Minh (Nam - Trầm ấm, mạnh mẽ)</option>
+              <option value="en-US-JennyNeural">Jenny (Nữ - Pop / RnB Style)</option>
+              <option value="en-US-GuyNeural">Guy (Nam - Baritone)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Giao diện Studio:</label>
+            <select id="themeSelect" class="studio-select">
+              <option value="dark_studio" selected>Dark Neon Studio (Mặc định)</option>
+              <option value="cyberpunk">Cyberpunk Violet / Cyan</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary mt-3" id="btnSaveSettings">
+            <span>💾 Lưu Cài Đặt</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Smart Paste Modal -->
+  <div class="modal-overlay" id="smartPasteModal">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3>📋 Dán nhanh Cấu Trúc JSON hoặc Lời bài hát</h3>
+        <button class="btn-close-modal" id="btnCloseModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Bạn có thể dán trực tiếp đoạn JSON từ ChatGPT/Claude/Gemini hoặc dán toàn bộ lời bài hát đã chia đoạn [Verse], [Chorus] vào đây:
+        </p>
+        <textarea id="smartPasteInput" rows="10" class="studio-textarea" placeholder="Dán nội dung JSON vào đây..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelModal">Hủy</button>
+        <button class="btn btn-primary" id="btnApplySmartPaste">⚡ Nạp vào Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

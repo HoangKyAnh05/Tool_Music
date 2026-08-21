@@ -1,0 +1,23 @@
+{
+  "name": "ai-music-vocal-studio",
+  "version": "1.0.0",
+  "description": "AI Music & Vocal Studio Desktop - 100% Free API & Local Processing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "keywords": [
+    "ai-music",
+    "vocal-studio",
+    "audio-mixing",
+    "librosa",
+    "gemini",
+    "edge-tts"
+  ],
+  "author": "AI Music Studio Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^29.1.5"
+  }
+}
