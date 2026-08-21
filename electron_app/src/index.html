@@ -62,6 +62,24 @@
 
   <!-- Main Workspace -->
   <main class="studio-workspace">
+
+    <!-- Step Progress Workflow Bar -->
+    <div class="workflow-steps-bar glass-panel">
+      <div class="step-item active" data-step="tab-beat">
+        <span class="step-num">BƯỚC 1</span>
+        <span class="step-title">📁 Nạp & Đo Beat</span>
+      </div>
+      <div class="step-arrow">➔</div>
+      <div class="step-item" data-step="tab-lyrics">
+        <span class="step-num">BƯỚC 2</span>
+        <span class="step-title">✍️ Soạn / Dán Lời Bài Hát</span>
+      </div>
+      <div class="step-arrow">➔</div>
+      <div class="step-item" data-step="tab-mixer">
+        <span class="step-num">BƯỚC 3</span>
+        <span class="step-title">🎙️ Chọn Giọng & Mix Nhạc</span>
+      </div>
+    </div>
     
     <!-- TAB 1: BEAT & ANALYZER -->
     <section class="tab-content active" id="tab-beat">
@@ -136,6 +154,13 @@
               <input type="range" id="beatVolumeSlider" class="custom-slider volume-slider" min="0" max="1" step="0.05" value="0.9">
             </div>
           </div>
+
+          <!-- Next Step Button -->
+          <div class="step-nav-footer mt-3">
+            <button class="btn btn-next-step glow-cyan" id="btnGoToStep2">
+              <span>👉 Tiếp tục: Sang Bước 2 (Soạn / Dán Lời) ➔</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -147,16 +172,28 @@
         <!-- Left Column: AI Generator Controls & Smart Actions -->
         <div class="lyrics-sidebar glass-panel">
           <div class="sidebar-section">
-            <h3 class="section-title">⚡ Smart Actions</h3>
+            <h3 class="section-title">⚡ Smart Actions (1-Click)</h3>
+            
+            <!-- ChatGPT Prompt Assistant Box -->
+            <div class="prompt-box-accent">
+              <div class="prompt-box-header">
+                <span>🤖 Nhờ ChatGPT / Claude viết lời</span>
+              </div>
+              <p class="prompt-box-desc">1-Click sao chép prompt đã căn đúng BPM của Beat để gửi cho ChatGPT:</p>
+              <button class="btn btn-copy-prompt" id="btnCopyChatGptPrompt">
+                <span>📋 Copy Prompt Cho ChatGPT</span>
+              </button>
+            </div>
+
             <div class="smart-btn-group">
               <button class="btn btn-action glow-cyan" id="btnSmartPaste">
-                <span>📋 Dán nhanh JSON từ Clipboard</span>
+                <span>📥 Dán nhanh JSON từ Clipboard</span>
               </button>
               <button class="btn btn-action glow-violet" id="btnExportJson">
                 <span>📤 Xuất Project JSON</span>
               </button>
               <button class="btn btn-action" id="btnImportJson">
-                <span>📥 Nạp file JSON</span>
+                <span>📂 Nạp file JSON có sẵn</span>
               </button>
             </div>
           </div>
@@ -268,6 +305,13 @@
               <textarea class="section-input" id="sec_outro" rows="2" placeholder="(Giai điệu dịu dần, lắng sâu...)"></textarea>
             </div>
 
+          </div>
+
+          <!-- Footer Next Step -->
+          <div class="editor-footer-nav">
+            <button class="btn btn-next-step glow-violet" id="btnGoToStep3">
+              <span>👉 Tiếp tục: Sang Bước 3 (Chọn Giọng & Mix Nhạc) ➔</span>
+            </button>
           </div>
         </div>
 

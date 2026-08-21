@@ -229,9 +229,147 @@ body {
 /* Workspace */
 .studio-workspace {
   flex: 1;
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+}
+
+/* Workflow Step Progress Bar */
+.workflow-steps-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 12px 20px;
+  background: rgba(13, 15, 23, 0.7);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  opacity: 0.6;
+}
+
+.step-item:hover {
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.step-item.active {
+  opacity: 1;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid var(--border-glass-bright);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+}
+
+.step-num {
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--cyan);
+  color: #000;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.step-item.active .step-num {
+  background: linear-gradient(135deg, #00f2fe, #a855f7);
+  color: #fff;
+}
+
+.step-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.step-arrow {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+/* Prompt Box Accent */
+.prompt-box-accent {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(168, 85, 247, 0.12) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-box-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.prompt-box-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.btn-copy-prompt {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  color: #000000;
+  border: none;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 12px var(--cyan-glow);
+}
+
+.btn-copy-prompt:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--cyan-glow);
+}
+
+.btn-next-step {
+  width: 100%;
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid var(--border-glass-bright);
+  color: var(--text-primary);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-next-step:hover {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.3), rgba(168, 85, 247, 0.3));
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px var(--cyan-glow);
+}
+
+.editor-footer-nav {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-glass);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .tab-content {

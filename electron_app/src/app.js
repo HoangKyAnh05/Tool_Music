@@ -129,6 +129,7 @@ const defaultVoiceSelect = document.getElementById("defaultVoiceSelect");
 document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupRefreshButton();
+  setupCopyPrompt();
   setupBeatUpload();
   setupAudioPlayer();
   setupLyricsActions();
@@ -199,16 +200,108 @@ function showToast(message, type = "info") {
   }, 3500);
 }
 
-// Navigation Tabs
+// Navigation Tabs & Workflow Steps
+function switchTab(targetId) {
+  navTabs.forEach((t) => t.classList.remove("active"));
+  tabContents.forEach((c) => c.classList.remove("active"));
+  
+  const targetNav = document.querySelector(`.nav-tab[data-tab="${targetId}"]`);
+  if (targetNav) targetNav.classList.add("active");
+  
+  const targetContent = document.getElementById(targetId);
+  if (targetContent) targetContent.classList.add("active");
+
+  // Sync Workflow Step Bar
+  document.querySelectorAll(".step-item").forEach((item) => {
+    if (item.getAttribute("data-step") === targetId) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+}
+
 function setupNavigation() {
   navTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       const targetId = tab.getAttribute("data-tab");
-      navTabs.forEach((t) => t.classList.remove("active"));
-      tabContents.forEach((c) => c.classList.remove("active"));
-      tab.classList.add("active");
-      const targetContent = document.getElementById(targetId);
-      if (targetContent) targetContent.classList.add("active");
+      switchTab(targetId);
+    });
+  });
+
+  // Workflow steps bar click
+  document.querySelectorAll(".step-item").forEach((step) => {
+    step.addEventListener("click", () => {
+      const targetId = step.getAttribute("data-step");
+      if (targetId) switchTab(targetId);
+    });
+  });
+
+  // Step 1 -> Step 2
+  const btnGoToStep2 = document.getElementById("btnGoToStep2");
+  if (btnGoToStep2) {
+    btnGoToStep2.addEventListener("click", () => {
+      switchTab("tab-lyrics");
+      showToast("Bước 2: Hãy soạn lời hoặc dùng nút Copy Prompt cho ChatGPT!", "info");
+    });
+  }
+
+  // Step 2 -> Step 3
+  const btnGoToStep3 = document.getElementById("btnGoToStep3");
+  if (btnGoToStep3) {
+    btnGoToStep3.addEventListener("click", () => {
+      switchTab("tab-mixer");
+      showToast("Bước 3: Chọn giọng hát AI và bấm Tạo bài hát & Mix nhạc!", "info");
+    });
+  }
+}
+
+// Setup Copy Prompt for ChatGPT
+function setupCopyPrompt() {
+  const btnCopyPrompt = document.getElementById("btnCopyChatGptPrompt");
+  if (!btnCopyPrompt) return;
+
+  btnCopyPrompt.addEventListener("click", () => {
+    const genre = genreSelect.value || "V-Pop Ballad";
+    const mood = moodSelect.value || "Sâu lắng, cảm xúc";
+    const bpm = parseFloat(lyricsBpmInput.value) || state.beat.bpm || 90;
+    const key = lyricsKeyInput.value || state.beat.key || "C Major";
+    const idea = promptIdeaInput.value.trim() || "Ký ức ngọt ngào và những ước mơ thời thanh xuân";
+
+    const chatGptPrompt = `Hãy sáng tác một bài hát hoàn chỉnh khớp với các thông số sau:
+- Thể loại nhạc: ${genre}
+- Nhịp độ (BPM): ${bpm} BPM
+- Tone nhạc (Key): ${key}
+- Tâm trạng: ${mood}
+- Ý tưởng / Chủ đề bài hát: "${idea}"
+
+Yêu cầu kỹ thuật:
+1. Gieo vần điệu mượt mà, số âm tiết mỗi câu đều đặn, nhịp nhàng theo nhịp độ ${bpm} BPM.
+2. Trả về DUY NHẤT một chuỗi JSON hợp lệ theo định dạng chuẩn sau (không thêm văn bản ngoài JSON):
+
+{
+  "title": "Tên bài hát",
+  "genre": "${genre}",
+  "bpm": ${bpm},
+  "key": "${key}",
+  "mood": "${mood}",
+  "lyrics": {
+    "intro": "(Nhạc dạo acoustic guitar du dương...)",
+    "verse_1": "Viết 4 câu lời 1 có vần điệu...",
+    "pre_chorus": "Viết 2 câu tiền điệp khúc...",
+    "chorus": "Viết 4 câu điệp khúc cao trào cảm xúc...",
+    "verse_2": "Viết 4 câu lời 2...",
+    "bridge": "Viết 2 câu cao trào chuyển tiếp...",
+    "outro": "(Giai điệu dịu dần, lắng sâu...)"
+  }
+}`;
+
+    navigator.clipboard.writeText(chatGptPrompt).then(() => {
+      showToast("✅ Đã sao chép Prompt ChatGPT! Dán vào ChatGPT rồi copy kết quả bấm 'Dán nhanh JSON'.", "success");
+    }).catch(() => {
+      // Fallback
+      promptIdeaInput.value = chatGptPrompt;
+      showToast("Đã tạo prompt mẫu!", "info");
     });
   });
 }
