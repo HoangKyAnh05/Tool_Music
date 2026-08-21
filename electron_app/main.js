@@ -154,6 +154,12 @@ ipcMain.on('window:close', () => {
   if (mainWindow) mainWindow.close();
 });
 
+ipcMain.on('window:reload', () => {
+  if (mainWindow) {
+    mainWindow.reload();
+  }
+});
+
 app.whenReady().then(async () => {
   // Check if backend is already running
   const isRunning = await checkBackendHealth(3, 200);
