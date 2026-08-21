@@ -1518,9 +1518,15 @@ function setupMultiTrackTimeline() {
 
   // 1-Click Render Multi-Track Master
   btnRenderMaster.addEventListener("click", async () => {
-    // Ensure track 1 has the current beat
+    // Ensure track 1 has the current beat if available
     if (state.beat.serverPath) {
       state.timeline.tracks[0].filepath = state.beat.serverPath;
+    }
+
+    const activeTracks = state.timeline.tracks.filter(t => t.filepath && t.filepath.trim() !== "");
+    if (activeTracks.length === 0) {
+      state.timeline.tracks[0].filepath = "data/uploads/demo_beat_lofi_90bpm.wav";
+      activeTracks.push(state.timeline.tracks[0]);
     }
 
     showToast("🔥 Đang ghép & render toàn bộ các Track trên Timeline...", "info");
@@ -1531,7 +1537,7 @@ function setupMultiTrackTimeline() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tracks: state.timeline.tracks,
+          tracks: activeTracks,
           song_title: state.lyrics.title || "MultiTrack_Master"
         })
       });
