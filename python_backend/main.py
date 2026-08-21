@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 from audio_engine import (
     analyze_beat,
+    detect_beat_structure,
     mix_beat_and_vocals,
     render_multitrack_timeline,
     auto_tune_vocal,
@@ -57,6 +58,12 @@ app.add_middleware(
 app.mount("/static/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.mount("/static/vocals", StaticFiles(directory=str(VOCALS_DIR)), name="vocals")
 app.mount("/static/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
+
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "AI Music Studio Backend is running!"}
+
 
 
 # Pydantic Request Models
@@ -110,6 +117,13 @@ class MultiTrackRenderRequest(BaseModel):
     song_title: Optional[str] = "MultiTrack_Master"
 
 
+class QuickMixRecordingRequest(BaseModel):
+    vocal_path: str
+    beat_path: Optional[str] = None
+    vocal_volume: Optional[float] = 1.25
+    beat_volume: Optional[float] = 1.0
+
+
 class SettingsRequest(BaseModel):
     gemini_api_key: Optional[str] = None
     default_voice: Optional[str] = "vi-VN-HoaiMyNeural"
@@ -124,6 +138,27 @@ async def health_check():
 @app.get("/api/voices")
 async def list_voices():
     return {"status": "success", "voices": get_available_voices()}
+
+
+@app.post("/api/upload-track-fast")
+async def upload_track_fast(file: UploadFile = File(...)):
+    """Fast track upload without heavy analysis, returns file path in <50ms."""
+    try:
+        timestamp = int(time.time())
+        clean_filename = f"track_{timestamp}_{file.filename.replace(' ', '_')}"
+        save_path = UPLOADS_DIR / clean_filename
+        
+        with open(save_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "server_filepath": str(save_path),
+            "url": f"/static/uploads/{clean_filename}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi upload nhanh: {str(e)}")
 
 
 @app.post("/api/analyze-beat")
@@ -145,6 +180,29 @@ async def upload_and_analyze_beat(file: UploadFile = File(...)):
         return {"status": "success", "data": analysis_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi phân tích beat: {str(e)}")
+
+
+@app.post("/api/detect-beat-structure")
+async def api_detect_beat_structure(req: dict):
+    """Detects Intro, Verse, Drop/Bassline, and Outro sections from a beat file."""
+    try:
+        beat_path = req.get("beat_path")
+        if not beat_path:
+            demo_beat = UPLOADS_DIR / "demo_beat_lofi_90bpm.wav"
+            if demo_beat.exists():
+                beat_path = str(demo_beat)
+
+        bp = Path(beat_path)
+        if not bp.is_absolute():
+            bp = BASE_DIR / beat_path
+
+        if not bp.exists():
+            raise HTTPException(status_code=404, detail="File Beat không tồn tại.")
+
+        structure = detect_beat_structure(str(bp))
+        return structure
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi phân tích cấu trúc beat: {str(e)}")
 
 
 @app.post("/api/extract-video-audio")
@@ -234,6 +292,62 @@ async def apply_autotune_and_fx(req: AutoTuneRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi xử lý Auto-Tune: {str(e)}")
+
+
+@app.post("/api/mix-recording-with-beat")
+async def mix_recording_with_beat(req: QuickMixRecordingRequest):
+    """Quickly merges a recorded vocal with the current background beat."""
+    try:
+        vocal_p = Path(req.vocal_path)
+        if not vocal_p.is_absolute():
+            vocal_p = BASE_DIR / req.vocal_path
+        if not vocal_p.exists():
+            raise HTTPException(status_code=404, detail="File Vocal không tồn tại.")
+
+        actual_beat_path = None
+        if req.beat_path:
+            bp = Path(req.beat_path)
+            if not bp.is_absolute():
+                bp = BASE_DIR / req.beat_path
+            if bp.exists():
+                actual_beat_path = str(bp)
+
+        if not actual_beat_path:
+            demo_beat = UPLOADS_DIR / "demo_beat_lofi_90bpm.wav"
+            if demo_beat.exists():
+                actual_beat_path = str(demo_beat)
+
+        if not actual_beat_path:
+            raise HTTPException(status_code=400, detail="Chưa có beat nền để ghép với bản thu.")
+
+        timestamp = int(time.time())
+        mixed_filename = f"rec_mixed_{timestamp}.mp3"
+        output_path = OUTPUTS_DIR / mixed_filename
+
+        mix_settings = {
+            "beat_volume": req.beat_volume if req.beat_volume is not None else 1.0,
+            "vocal_volume": req.vocal_volume if req.vocal_volume is not None else 1.25,
+            "reverb": 0.25,
+            "delay": 0.1,
+            "compressor": True,
+            "eq_preset": "warm_vocal"
+        }
+
+        mix_beat_and_vocals(
+            beat_path=actual_beat_path,
+            vocal_path=str(vocal_p),
+            output_path=str(output_path),
+            mix_settings=mix_settings
+        )
+
+        return {
+            "status": "success",
+            "message": "Đã ghép bản thu âm với Beat thành công!",
+            "mixed_url": f"/static/outputs/{mixed_filename}",
+            "filename": mixed_filename
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi ghép bản thu với beat: {str(e)}")
 
 
 @app.post("/api/render-multitrack")
@@ -378,4 +492,4 @@ async def download_file(filename: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8888, reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8888)

@@ -561,6 +561,16 @@
             <label class="section-label">Bản thu gốc mộc (Raw Mic Recording):</label>
             <audio id="rawRecordAudioPlayer" controls class="w-100 mt-1"></audio>
           </div>
+
+          <div class="mixed-audio-playback-box mt-3">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="section-label" style="margin-bottom: 0;">🎧 Bản thu đã ghép với Beat (Vocal + Beat):</label>
+              <button class="btn btn-sm btn-secondary" id="btnQuickMixRecBeat" title="Ghép bản thu âm này với Beat nhạc nền" style="padding: 4px 10px; font-size: 0.75rem;">
+                <span>⚡ Ghép Lại Với Beat</span>
+              </button>
+            </div>
+            <audio id="mixedRecordAudioPlayer" controls class="w-100 mt-1"></audio>
+          </div>
         </div>
 
         <!-- Right Card: Auto-Tune & Voice FX Processor -->
@@ -653,6 +663,10 @@
             <button class="btn-transport btn-transport-stop" id="btnStopTimeline">
               <span>⏹ Dừng</span>
             </button>
+            <button class="btn-transport btn-transport-rec" id="btnRecordAtPlayhead" title="Bắt đầu thu âm trực tiếp từ vị trí vạch đỏ hiện tại">
+              <span id="recPlayheadDot">🔴</span>
+              <span id="recPlayheadLabel">Thu Âm Tại Vạch Đỏ</span>
+            </button>
             <div class="timeline-time-display">
               <span id="timelineCurrentTime">00:00.0</span> / <span id="timelineTotalTime">00:45.0</span>
             </div>
@@ -662,113 +676,40 @@
             <button class="btn btn-secondary" id="btnAddAudioFileToTimeline">
               <span>➕ Thêm File Sound / Beat</span>
             </button>
+            <button class="btn btn-secondary" id="btnAddTrack">
+              <span>➕ Thêm Track</span>
+            </button>
+            <button class="btn btn-action glow-cyan" id="btnDetectBeatStructure" title="Tự động nhận diện cấu trúc Intro, Phiên khúc, Drop/Bassline, Outro">
+              <span>⚡ Tách & Nhận Diện Nhịp / Intro / Bass / Outro</span>
+            </button>
             <button class="btn btn-primary glow-pink" id="btnRenderTimelineMaster">
               <span>🔥 GHÉP & XUẤT MASTER TIMELINE (1-CLICK)</span>
             </button>
           </div>
         </div>
 
-        <input type="file" id="timelineAudioFileInput" accept="audio/*" hidden>
+        <input type="file" id="timelineAudioFileInput" accept="audio/*" multiple hidden>
 
         <!-- Timeline Visual Area -->
         <div class="timeline-scroll-container">
           
-          <!-- Timeline Time Ruler -->
+          <!-- Timeline Time Ruler (Dynamic markers generated from state) -->
           <div class="timeline-ruler" id="timelineRuler">
-            <div class="ruler-marker" style="left: 0%;">00:00</div>
-            <div class="ruler-marker" style="left: 20%;">00:10</div>
-            <div class="ruler-marker" style="left: 40%;">00:20</div>
-            <div class="ruler-marker" style="left: 60%;">00:30</div>
-            <div class="ruler-marker" style="left: 80%;">00:40</div>
-            <div class="ruler-marker" style="left: 100%;">00:50</div>
-            <!-- Playhead line -->
-            <div class="timeline-playhead-line" id="timelinePlayhead"></div>
+            <!-- Playhead line with draggable scrubber knob -->
+            <div class="timeline-playhead-line" id="timelinePlayhead">
+              <div class="playhead-knob" id="playheadKnob" title="Nhấn giữ và kéo sang trái / phải để chỉnh vị trí phát">
+                <span class="knob-icon">▼</span>
+              </div>
+            </div>
           </div>
 
-          <!-- Multi-Track Lanes Container -->
+          <!-- Multi-Track Lanes Container (Dynamically rendered, Unlimited tracks) -->
           <div class="timeline-tracks-list" id="timelineTracksList">
-            
-            <!-- Track 1: Beat Chính -->
-            <div class="track-row" data-track-id="track_1">
-              <div class="track-header">
-                <span class="track-badge badge-cyan">TRACK 1</span>
-                <span class="track-title" id="track1Name">🎵 Beat Nhạc Chính</span>
-                <div class="track-mini-controls">
-                  <span class="vol-label">Vol:</span>
-                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.0">
-                  <button class="btn-mute" title="Mute Track">M</button>
-                </div>
-              </div>
-              <div class="track-lane" id="laneTrack1">
-                <div class="sound-block block-cyan" id="blockTrack1" style="left: 0%; width: 64%;">
-                  <span class="sound-block-drag-handle">⠿</span>
-                  <span class="sound-block-title" id="blockTrack1Title">Beat Lofi 90 BPM (00:00.0s)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Track 2: Sound FX / Intro -->
-            <div class="track-row" data-track-id="track_2">
-              <div class="track-header">
-                <span class="track-badge badge-amber">TRACK 2</span>
-                <span class="track-title" id="track2Name">🥁 Sound FX / Drop / Intro</span>
-                <div class="track-mini-controls">
-                  <span class="vol-label">Vol:</span>
-                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="0.9">
-                  <button class="btn-mute" title="Mute Track">M</button>
-                </div>
-              </div>
-              <div class="track-lane" id="laneTrack2">
-                <div class="sound-block block-amber" id="blockTrack2" style="left: 24%; width: 25%;">
-                  <span class="sound-block-drag-handle">⠿</span>
-                  <span class="sound-block-title" id="blockTrack2Title">Sound FX Drop (00:12.0s)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Track 3: Vocal Thu Âm Micro -->
-            <div class="track-row" data-track-id="track_3">
-              <div class="track-header">
-                <span class="track-badge badge-pink">TRACK 3</span>
-                <span class="track-title" id="track3Name">🔴 Giọng Hát Thu Âm (Auto-Tune)</span>
-                <div class="track-mini-controls">
-                  <span class="vol-label">Vol:</span>
-                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.2">
-                  <button class="btn-mute" title="Mute Track">M</button>
-                </div>
-              </div>
-              <div class="track-lane" id="laneTrack3">
-                <div class="sound-block block-pink" id="blockTrack3" style="left: 8%; width: 45%;">
-                  <span class="sound-block-drag-handle">⠿</span>
-                  <span class="sound-block-title" id="blockTrack3Title">Vocal Thu Âm (00:04.0s)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Track 4: Giọng Hát AI -->
-            <div class="track-row" data-track-id="track_4">
-              <div class="track-header">
-                <span class="track-badge badge-violet">TRACK 4</span>
-                <span class="track-title" id="track4Name">🤖 Giọng Hát AI (Neural Vocal)</span>
-                <div class="track-mini-controls">
-                  <span class="vol-label">Vol:</span>
-                  <input type="range" class="custom-slider track-vol-slider" min="0" max="1.5" step="0.05" value="1.15">
-                  <button class="btn-mute" title="Mute Track">M</button>
-                </div>
-              </div>
-              <div class="track-lane" id="laneTrack4">
-                <div class="sound-block block-violet" id="blockTrack4" style="left: 16%; width: 55%;">
-                  <span class="sound-block-drag-handle">⠿</span>
-                  <span class="sound-block-title" id="blockTrack4Title">AI Vocal Hoài My (00:08.0s)</span>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
 
         <div class="timeline-hint-box">
-          <span>💡 <b>Mẹo Kéo Thả:</b> Bạn có thể giữ chuột vào bất kỳ khối âm thanh nào rồi <b>kéo trượt sang trái hoặc sang phải</b> để căn chỉnh thời điểm phát chính xác từng giây!</span>
+          <span>💡 <b>Mẹo DAW Chuyên Nghiệp:</b> Bạn có thể bấm <b>➕ Thêm Track Mới</b> (không giới hạn số lượng track), kéo thả file âm thanh tùy ý, và bấm <b>🔴 Thu Âm Tại Vạch Đỏ</b> để thu âm giọng hát khớp chuẩn xác từng giây với beat nhạc! Bấm <b>🪄 Auto-Tune</b> trên từng đoạn vocal để nắn tone theo ý muốn.</span>
         </div>
 
         <!-- Master Rendered Audio Player for Timeline -->
@@ -780,6 +721,76 @@
             </a>
           </div>
           <audio id="timelineMasterAudioPlayer" controls class="w-100 mt-2"></audio>
+        </div>
+
+        <!-- INLINE AUTOTUNE & DSP MODAL FOR TIMELINE VOCAL BLOCKS -->
+        <div class="timeline-autotune-modal" id="timelineAutoTuneModal" style="display: none;">
+          <div class="timeline-autotune-card">
+            <div class="autotune-modal-header">
+              <h3>🪄 Auto-Tune & Xử Lý Giọng Hát Studio</h3>
+              <button class="btn-close-modal" id="btnCloseAutoTuneModal">✕</button>
+            </div>
+            
+            <p class="subtitle mb-3">Chỉnh tone, nắn nốt và hiệu ứng phòng thu cho track vocal đang chọn:</p>
+
+            <div class="form-row-2 mb-3">
+              <div class="form-group">
+                <label>Key Tone Mục Tiêu:</label>
+                <select id="modalAutoTuneKeySelect" class="studio-select">
+                  <option value="C">C (Đô)</option>
+                  <option value="C#">C# / Db</option>
+                  <option value="D">D (Rê)</option>
+                  <option value="D#">D# / Eb</option>
+                  <option value="E">E (Mi)</option>
+                  <option value="F">F (Fa)</option>
+                  <option value="F#">F# / Gb</option>
+                  <option value="G">G (Sol)</option>
+                  <option value="G#">G# / Ab</option>
+                  <option value="A">A (La)</option>
+                  <option value="A#">A# / Bb</option>
+                  <option value="B">B (Si)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Thang Âm (Scale):</label>
+                <select id="modalAutoTuneScaleSelect" class="studio-select">
+                  <option value="Major">Major (Trưởng - Tươi vui)</option>
+                  <option value="Minor">Minor (Thứ - Trầm lắng/Buồn)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <div class="slider-header flex-between">
+                <label>Tốc độ nắn Auto-Tune (Retune Speed):</label>
+                <span class="badge badge-pink" id="valModalAutoTuneSpeed">75% (Studio Pitch Correction)</span>
+              </div>
+              <input type="range" id="modalAutoTuneSpeedSlider" class="custom-slider w-100" min="0" max="100" value="75">
+            </div>
+
+            <div class="form-group mb-4">
+              <label>Bộ hiệu ứng không gian & màu giọng:</label>
+              <select id="modalVoiceEffectSelect" class="studio-select">
+                <option value="none">Mộc + Nén tiếng (Clean Studio Compressor)</option>
+                <option value="reverb_hall">Phòng Thu Reverb Hall Lớn (Sâu lắng)</option>
+                <option value="warm_radio">Radio / Podcast Cổ Điển (Ấm áp)</option>
+                <option value="telephone">Hiệu ứng Điện Thoại Cổ (Vintage Telephone)</option>
+                <option value="chipmunk">Giọng Cao Chipmunk (Vui nhộn)</option>
+                <option value="deep_bass">Giọng Trầm Deep Voice (Bí ẩn)</option>
+              </select>
+            </div>
+
+            <div class="modal-actions flex-end gap-2">
+              <button class="btn btn-secondary glow-cyan" id="btnResetToRawVocal" title="Khôi phục lại giọng mộc tự nhiên ban đầu không qua Auto-Tune">
+                <span>🎙️ DÙNG GIỌNG MỘC (GỐC)</span>
+              </button>
+              <button class="btn btn-secondary" id="btnCancelAutoTuneModal">Đóng</button>
+              <button class="btn btn-primary glow-pink" id="btnApplyModalAutoTune">
+                <span>🪄 ÁP DỤNG AUTO-TUNE</span>
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>

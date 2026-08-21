@@ -55,8 +55,8 @@ echo - Python Server: http://127.0.0.1:8888
 echo - Giao diện Studio: Đang mở cửa sổ...
 echo.
 
-:: Khởi chạy backend ngầm
-start "AI Music Studio Backend" /min "%PYTHON_EXE%" "%ROOT_DIR%python_backend\main.py"
+:: Khởi chạy backend ngầm từ thư mục python_backend
+start "AI Music Studio Backend" /d "%ROOT_DIR%python_backend" /min "%PYTHON_EXE%" "%ROOT_DIR%python_backend\main.py"
 
 :: Khởi chạy Electron App
 cd /d "%ROOT_DIR%electron_app"

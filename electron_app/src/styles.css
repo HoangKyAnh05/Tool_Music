@@ -1489,6 +1489,19 @@ audio {
   gap: 12px;
 }
 
+.mixed-audio-playback-box {
+  background: rgba(0, 242, 254, 0.05);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.mixed-audio-playback-box .section-label {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
 /* =========================================================================
    TAB 5: MULTI-TRACK TIMELINE SEQUENCER STYLES
    ========================================================================= */
@@ -1595,14 +1608,55 @@ audio {
 .timeline-playhead-line {
   position: absolute;
   top: 0;
-  bottom: -300px;
+  bottom: -800px;
   left: 0%;
   width: 2px;
   background: #ff0055;
-  box-shadow: 0 0 8px #ff0055;
-  z-index: 20;
+  box-shadow: 0 0 10px #ff0055, 0 0 4px #ffffff;
+  z-index: 50;
+  pointer-events: auto;
+  cursor: ew-resize;
+  transition: none;
+}
+
+.playhead-knob {
+  position: absolute;
+  top: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 24px;
+  background: linear-gradient(180deg, #ff0055 0%, #be123c 100%);
+  border: 2px solid #ffffff;
+  border-radius: 4px 4px 10px 10px;
+  box-shadow: 0 0 12px rgba(255, 0, 85, 0.9), 0 3px 6px rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 60;
+  user-select: none;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.playhead-knob:hover {
+  transform: translateX(-50%) scale(1.15);
+  filter: brightness(1.2);
+}
+
+.playhead-knob:active {
+  cursor: grabbing;
+  transform: translateX(-50%) scale(1.25);
+  box-shadow: 0 0 20px #ff0055;
+}
+
+.knob-icon {
+  font-size: 0.55rem;
+  color: #ffffff;
+  line-height: 1;
+  margin-top: 1px;
   pointer-events: none;
-  transition: left 0.05s linear;
 }
 
 .timeline-tracks-list {
@@ -1630,6 +1684,51 @@ audio {
   flex-direction: column;
   justify-content: center;
   gap: 4px;
+}
+
+.track-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-delete-track {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-track:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.btn-remove-block {
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.btn-remove-block:hover {
+  opacity: 1;
+  background: #ef4444;
+  border-color: #ef4444;
 }
 
 .track-title {
@@ -1694,13 +1793,16 @@ audio {
   border-radius: 6px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 8px;
+  padding: 0 8px;
+  gap: 6px;
   cursor: grab;
   user-select: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: box-shadow 0.2s ease, filter 0.2s ease;
   z-index: 10;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-width: 15px;
 }
 
 .sound-block:active {
@@ -1748,18 +1850,136 @@ audio {
   color: #ffffff;
 }
 
-.timeline-hint-box {
-  background: rgba(0, 242, 254, 0.06);
-  border: 1px dashed rgba(0, 242, 254, 0.3);
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  color: var(--text-secondary);
+.btn-transport-rec {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
 
-.timeline-master-result-card {
-  padding: 16px;
-  background: rgba(18, 22, 34, 0.9);
-  border: 1px solid var(--border-glass-bright);
+.btn-transport-rec:hover {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+}
+
+.btn-transport-rec.recording {
+  background: #ef4444;
+  animation: pulseRecTimeline 1s infinite;
+}
+
+@keyframes pulseRecTimeline {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 1); transform: scale(1.03); }
+}
+
+.sound-block.recording-live {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.6), rgba(185, 28, 28, 0.8)) !important;
+  border: 2px solid #ff4d4d !important;
+  animation: pulseRecordingBlock 1s infinite;
+}
+
+@keyframes pulseRecordingBlock {
+  0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 1); }
+}
+
+.btn-block-tune {
+  background: rgba(168, 85, 247, 0.3);
+  border: 1px solid #a855f7;
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-block-tune:hover {
+  background: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+}
+
+.block-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.45) 0%, rgba(5, 150, 105, 0.45) 100%);
+  border: 1px solid #10b981;
+  color: #ffffff;
+}
+
+.block-indigo {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.45) 0%, rgba(79, 70, 229, 0.45) 100%);
+  border: 1px solid #6366f1;
+  color: #ffffff;
+}
+
+.block-teal {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.45) 0%, rgba(13, 148, 136, 0.45) 100%);
+  border: 1px solid #14b8a6;
+  color: #ffffff;
+}
+
+.block-crimson {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.45) 0%, rgba(225, 29, 72, 0.45) 100%);
+  border: 1px solid #f43f5e;
+  color: #ffffff;
+}
+
+/* Timeline AutoTune Modal */
+.timeline-autotune-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-autotune-card {
+  width: 90%;
+  max-width: 580px;
+  background: linear-gradient(145deg, rgba(22, 27, 46, 0.95), rgba(13, 16, 28, 0.98));
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 242, 254, 0.2);
+}
+
+.autotune-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.autotune-modal-header h3 {
+  font-size: 1.15rem;
+  color: var(--cyan);
+  font-weight: 800;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.btn-close-modal:hover {
+  color: #ef4444;
 }
 

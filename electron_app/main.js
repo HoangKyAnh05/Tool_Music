@@ -31,11 +31,12 @@ function checkBackendHealth(retries = 20, delay = 500) {
 
 function startPythonBackend() {
   const rootDir = path.resolve(__dirname, '..');
-  const pythonScript = path.join(rootDir, 'python_backend', 'main.py');
+  const backendDir = path.join(rootDir, 'python_backend');
+  const pythonScript = path.join(backendDir, 'main.py');
   
   // Try finding virtualenv python or system python
   const possiblePythons = [
-    path.join(rootDir, 'python_backend', '.venv', 'Scripts', 'python.exe'),
+    path.join(backendDir, '.venv', 'Scripts', 'python.exe'),
     path.join(rootDir, '.venv', 'Scripts', 'python.exe'),
     'python',
     'py'
@@ -52,9 +53,9 @@ function startPythonBackend() {
   console.log(`Starting Python backend using: ${selectedPython}`);
   
   if (selectedPython === 'py') {
-    pythonProcess = spawn('py', ['-3.11', pythonScript], { cwd: rootDir, shell: true, windowsHide: true });
+    pythonProcess = spawn('py', ['-3.11', pythonScript], { cwd: backendDir, shell: true, windowsHide: true });
   } else {
-    pythonProcess = spawn(selectedPython, [pythonScript], { cwd: rootDir, shell: true, windowsHide: true });
+    pythonProcess = spawn(selectedPython, [pythonScript], { cwd: backendDir, shell: true, windowsHide: true });
   }
 
   pythonProcess.stdout?.on('data', (data) => {
